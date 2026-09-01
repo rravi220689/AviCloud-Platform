@@ -391,7 +391,57 @@ async function handleQuickDuckDnsSubmit(e) {
   }
 }
 
+async function saveDuckDnsSettings(e) {
+  e.preventDefault();
+  const domain = document.getElementById('duckdnsConfigDomain').value.trim();
+  const token = document.getElementById('duckdnsConfigToken').value.trim();
+  const interval = document.getElementById('duckdnsConfigInterval').value;
+  const subdomains = document.getElementById('duckdnsConfigSubdomains').value.split(',').map(s => s.trim()).filter(Boolean);
+
+  const saveBtn = document.getElementById('saveDuckDnsBtn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  }
+
+  try {
+    const res = await fetch('/api/network/ddns/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        provider: 'duckdns',
+        domain: domain,
+        token: token,
+        extraConfig: JSON.stringify({ subdomains, interval })
+      })
+    });
+    const data = await res.json();
+    const feedback = document.getElementById('duckdnsStatusFeedback');
+    if (data.success) {
+      if (feedback) feedback.innerHTML = `Status: <span class="text-emerald-400 font-bold">Synchronized with ${data.currentIp} (${new Date().toLocaleTimeString()})</span>`;
+      alert(`🎉 DuckDNS Settings Saved & Synced Successfully!\nDomain: ${domain}\nIP: ${data.currentIp}`);
+      loadStorageShares();
+    } else {
+      if (feedback) feedback.innerHTML = `Status: <span class="text-rose-400 font-bold">Sync Error: ${data.error || 'Failed'}</span>`;
+      alert(`DuckDNS Sync: ${data.error || 'Failed'}`);
+    }
+  } catch (err) {
+    alert(`Failed: ${err.message}`);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save & Sync DuckDNS';
+    }
+  }
+}
+
 async function syncDuckDnsDirect() {
+  const domain = (document.getElementById('duckdnsConfigDomain') ? document.getElementById('duckdnsConfigDomain').value.trim() : 'avivault.duckdns.org') || 'avivault.duckdns.org';
+  const token = (document.getElementById('duckdnsConfigToken') ? document.getElementById('duckdnsConfigToken').value.trim() : '704e7d65-53a3-492f-a659-49afbfeefaa6') || '704e7d65-53a3-492f-a659-49afbfeefaa6';
+
   const btn = document.getElementById('syncDuckDnsBtn');
   if (btn) {
     btn.disabled = true;
@@ -407,14 +457,17 @@ async function syncDuckDnsDirect() {
       },
       body: JSON.stringify({
         provider: 'duckdns',
-        domain: 'avivault.duckdns.org',
-        token: '704e7d65-53a3-492f-a659-49afbfeefaa6'
+        domain: domain,
+        token: token
       })
     });
     const data = await res.json();
+    const feedback = document.getElementById('duckdnsStatusFeedback');
     if (data.success) {
-      alert(`✅ DuckDNS Synced Successfully! IP ${data.currentIp} registered with avivault.duckdns.org`);
+      if (feedback) feedback.innerHTML = `Status: <span class="text-emerald-400 font-bold">Synchronized with ${data.currentIp} (${new Date().toLocaleTimeString()})</span>`;
+      alert(`✅ DuckDNS Synced Successfully! IP ${data.currentIp} registered with ${domain}`);
     } else {
+      if (feedback) feedback.innerHTML = `Status: <span class="text-rose-400 font-bold">Sync Error: ${data.error || 'Failed'}</span>`;
       alert(`DuckDNS Sync: ${data.error || 'Failed'}`);
     }
   } catch (err) {

@@ -108,6 +108,12 @@ function handleWebDAV(req, res) {
     try {
       const parent = path.dirname(targetPath);
       if (!fs.existsSync(parent)) fs.mkdirSync(parent, { recursive: true });
+
+      if (req.body && (Buffer.isBuffer(req.body) || typeof req.body === 'string')) {
+        fs.writeFileSync(targetPath, req.body);
+        return res.status(201).end();
+      }
+
       const ws = fs.createWriteStream(targetPath);
       req.pipe(ws);
       ws.on('finish', () => res.status(201).end());

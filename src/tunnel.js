@@ -474,8 +474,11 @@ async function updateDynamicDNS(provider, domain, token, extraConfig = '') {
       updateResult = await simpleHttpGet(targetUrl);
 
     } else if (provider === 'duckdns') {
-      const url = `https://www.duckdns.org/update?domains=${encodeURIComponent(domain)}&token=${encodeURIComponent(token)}&ip=${currentIp}`;
-      updateResult = await simpleHttpGet(url);
+      const duckDomain = domain.replace(/\.duckdns\.org$/i, '');
+      const url = `https://www.duckdns.org/update?domains=${encodeURIComponent(duckDomain)}&token=${encodeURIComponent(token)}&ip=${currentIp}`;
+      const res = await simpleHttpGet(url);
+      const isOk = res.success && res.response.includes('OK');
+      updateResult = { success: isOk, response: res.response };
     }
 
     const isSuccess = updateResult ? (updateResult.success !== false) : false;

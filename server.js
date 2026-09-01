@@ -43,14 +43,15 @@ rewriterProxy.on('error', (err, req, res) => {
   }
 });
 
+// -------------------------------------------------------------
+// 1. WebDAV Authenticated Network Cloud Drive (/webdav)
+// (Must be mounted before body parsers to allow streaming PUT uploads)
+// -------------------------------------------------------------
+app.all('/webdav*', webdav.authBasic, webdav.handleWebDAV);
+
 // Middleware
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
-
-// -------------------------------------------------------------
-// 1. WebDAV Authenticated Network Cloud Drive (/webdav)
-// -------------------------------------------------------------
-app.all('/webdav*', webdav.authBasic, webdav.handleWebDAV);
 
 // -------------------------------------------------------------
 // 2. Custom Domain Virtual Host Routing on Port 9000
