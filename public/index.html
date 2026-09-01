@@ -226,13 +226,13 @@
           <!-- Outside Access Card -->
           <div class="glass-card p-6">
             <div class="flex items-center justify-between text-slate-400 mb-3">
-              <span class="text-xs font-bold uppercase tracking-wider">Remote Access</span>
+              <span class="text-xs font-bold uppercase tracking-wider">Public Base URL</span>
               <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                <i class="fa-solid fa-tower-broadcast"></i>
+                <i class="fa-solid fa-globe"></i>
               </div>
             </div>
-            <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Online (24/7)</div>
-            <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Cloudflare / Pinggy / DDNS</p>
+            <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Online</div>
+            <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Custom / Cloudflare</p>
             <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
               <div id="statTunnelBar" class="h-full bg-purple-400" style="width: 100%"></div>
             </div>
@@ -288,13 +288,13 @@
               </div>
             </div>
 
-            <div onclick="switchTab('databases')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-                <i class="fa-solid fa-database"></i>
+            <div onclick="switchTab('network')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-globe"></i>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white mb-1">Database Hub</h4>
-                <p class="text-xs text-slate-400">Query MySQL, Postgres & MSSQL.</p>
+                <h4 class="text-sm font-bold text-white mb-1">Custom Public URL</h4>
+                <p class="text-xs text-slate-400">Configure & auto-sync your own domain.</p>
               </div>
             </div>
           </div>
@@ -383,7 +383,6 @@
             <i class="fa-solid fa-terminal text-teal-400"></i> Client Mount Instructions
           </h4>
 
-          <!-- Linux -->
           <div>
             <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
               <span><i class="fa-brands fa-linux text-yellow-400 mr-1.5"></i> Linux Client Mount:</span>
@@ -392,7 +391,6 @@
             <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock 127.0.0.1:/storage /mnt/avicloud</pre>
           </div>
 
-          <!-- macOS -->
           <div>
             <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
               <span><i class="fa-brands fa-apple text-slate-200 mr-1.5"></i> macOS Client Mount:</span>
@@ -401,7 +399,6 @@
             <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdMac">sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock 127.0.0.1:/storage /Volumes/AviCloud</pre>
           </div>
 
-          <!-- Windows -->
           <div>
             <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
               <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows Client Mount (Map Network Drive):</span>
@@ -492,9 +489,70 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 7: FREE REMOTE TUNNELS & MULTI-PROVIDER DDNS -->
+      <!-- TAB 7: CUSTOM MODIFIABLE PUBLIC URL & REMOTE TUNNELS -->
       <!-- ========================================================================= -->
       <section id="tab-network" class="hidden space-y-6">
+
+        <!-- Custom User-Modifiable Public URL Card -->
+        <div class="glass-card p-6 border border-cyan-500/30">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white">Custom Modifiable Public URL</h3>
+                <p class="text-xs text-slate-400">Set your own custom domain or public URL. If the underlying Cloudflare tunnel changes, AviCloud auto-updates and keeps your URL accessible.</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] uppercase font-bold text-slate-500 block">Effective Outside URL</span>
+              <span class="text-xs font-mono font-bold text-cyan-400" id="currentEffectiveUrlDisplay">Loading...</span>
+            </div>
+          </div>
+
+          <form id="customPublicUrlForm" class="space-y-4">
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+              <div class="relative flex-1 w-full">
+                <input type="text" id="customPublicUrlInput" placeholder="e.g. https://mycloud.yourcustomdomain.com or leave blank for automatic tunnel" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500">
+              </div>
+              <button type="submit" class="gradient-btn px-5 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 w-full sm:w-auto shadow">
+                <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Custom URL
+              </button>
+              <button type="button" onclick="clearCustomPublicUrl()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 rounded-xl text-xs font-semibold border border-slate-700 transition shrink-0 w-full sm:w-auto">
+                Reset to Auto
+              </button>
+            </div>
+            <div id="customUrlFeedback" class="hidden text-xs"></div>
+          </form>
+
+          <!-- Dynamic DNS CNAME Mapping Helper -->
+          <div class="mt-4 p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-2">
+            <div class="flex items-center justify-between font-semibold text-slate-300">
+              <span class="text-cyan-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-info"></i> How to point your custom domain here:
+              </span>
+              <span class="text-slate-500 font-mono text-[11px]">Auto-Synced with Cloudflare Edge</span>
+            </div>
+            <p class="text-slate-400">
+              In your domain registrar / DNS provider (Cloudflare, Namecheap, GoDaddy, etc.), create a <strong>CNAME</strong> record:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-[11px] pt-1">
+              <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[10px] uppercase">Record Type & Name</span>
+                <span class="text-amber-400 font-bold">CNAME</span> | <span class="text-white">cloud (or @ for root)</span>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                <div>
+                  <span class="text-slate-500 block text-[10px] uppercase">Target / Value (Auto-Updating)</span>
+                  <span class="text-emerald-400 font-bold truncate max-w-[200px]" id="dnsCnameTarget">Loading...</span>
+                </div>
+                <button onclick="copyToClipboard(document.getElementById('dnsCnameTarget').innerText)" class="text-cyan-400 hover:text-cyan-300 p-1" title="Copy Target"><i class="fa-solid fa-copy"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Multi-Provider Remote Tunnels Card -->
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
@@ -542,7 +600,7 @@
           <!-- Public URL Box -->
           <div id="tunnelUrlBox" class="hidden p-4 rounded-xl bg-slate-900/80 border border-purple-500/30 flex items-center justify-between">
             <div>
-              <span class="text-[10px] uppercase tracking-wider font-bold text-purple-400">Live Public HTTPS URL</span>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-purple-400">Live Public Cloudflare Tunnel URL</span>
               <p class="text-sm font-mono font-bold text-white mt-0.5" id="livePublicUrl">https://...</p>
             </div>
             <button onclick="copyToClipboard(document.getElementById('livePublicUrl').innerText)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg text-xs font-semibold border border-slate-700 transition">
@@ -560,7 +618,7 @@
               </div>
               <div>
                 <h3 class="text-base font-bold text-white">Free Dynamic DNS & Webhook Sync</h3>
-                <p class="text-xs text-slate-400">Sync your public IP with Cloudflare DNS, FreeDNS, No-IP, Dynu, or Custom Webhooks.</p>
+                <p class="text-xs text-slate-400">Sync your public IP and live tunnel with Cloudflare DNS, FreeDNS, No-IP, Dynu, or Custom Webhooks.</p>
               </div>
             </div>
             <div class="text-xs text-slate-400 font-mono">
@@ -607,7 +665,7 @@
                     <th class="p-3">Provider</th>
                     <th class="p-3">Domain</th>
                     <th class="p-3">Status</th>
-                    <th class="p-3">Last Synced IP</th>
+                    <th class="p-3">Last Synced Target</th>
                     <th class="p-3">Last Updated</th>
                     <th class="p-3 text-right">Action</th>
                   </tr>

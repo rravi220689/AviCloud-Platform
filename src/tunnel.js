@@ -37,6 +37,42 @@ function ensureCloudflaredBinary() {
 }
 
 // -------------------------------------------------------------
+// Effective Public URL Resolver (User-Customized or Live Tunnel)
+// -------------------------------------------------------------
+function getEffectivePublicUrl() {
+  const customUrl = db.getSetting('custom_public_url', '').trim();
+  if (customUrl) {
+    return customUrl.replace(/\/+$/, '');
+  }
+  const tunnelUrl = activeTunnelUrl || db.getSetting('active_tunnel_url', '');
+  if (tunnelUrl) {
+    return tunnelUrl.replace(/\/+$/, '');
+  }
+  return `http://localhost:${config.PORT}`;
+}
+
+function setCustomPublicUrl(userUrl) {
+  let cleaned = (userUrl || '').trim();
+  if (cleaned && !/^https?:\/\//i.test(cleaned)) {
+    cleaned = 'https://' + cleaned;
+  }
+  cleaned = cleaned.replace(/\/+$/, '');
+  db.setSetting('custom_public_url', cleaned);
+  
+  // Trigger callback to broadcast update
+  if (onUrlChangeCallback) {
+    onUrlChangeCallback(getEffectivePublicUrl());
+  }
+
+  return {
+    success: true,
+    customUrl: cleaned,
+    effectiveUrl: getEffectivePublicUrl(),
+    message: cleaned ? `Custom public URL set to ${cleaned}` : 'Reverted to automatic live Cloudflare URL'
+  };
+}
+
+// -------------------------------------------------------------
 // 1. Robust Background Auto-Tunnel Daemon
 // -------------------------------------------------------------
 function startTunnel(provider = 'cloudflare', targetPort = config.PORT, customToken = '') {
@@ -49,6 +85,7 @@ function startTunnel(provider = 'cloudflare', targetPort = config.PORT, customTo
     return {
       success: true,
       url: activeTunnelUrl,
+      effectiveUrl: getEffectivePublicUrl(),
       provider: activeTunnelProvider,
       status: activeTunnelStatus,
       message: 'Tunnel is already active.'
@@ -83,11 +120,14 @@ function startTunnel(provider = 'cloudflare', targetPort = config.PORT, customTo
             db.setSetting('last_tunnel_sync', new Date().toISOString());
             console.log(`[AviCloud Tunnel Daemon] 🚀 Live Public HTTPS URL: ${activeTunnelUrl}`);
 
+            // Automatically auto-sync any configured DNS or Webhooks for user custom URLs
+            autoSyncConfiguredDns(activeTunnelUrl);
+
             // Trigger notification webhook if configured
             notifyWebhookOnUrlChange(activeTunnelUrl);
 
             if (onUrlChangeCallback) {
-              onUrlChangeCallback(activeTunnelUrl);
+              onUrlChangeCallback(getEffectivePublicUrl());
             }
           }
         }
@@ -150,7 +190,9 @@ function startPinggyTunnel(targetPort = config.PORT) {
         activeTunnelStatus = 'running';
         db.setSetting('active_tunnel_url', activeTunnelUrl);
         db.setSetting('active_tunnel_provider', 'Pinggy Free Tunnel');
+        autoSyncConfiguredDns(activeTunnelUrl);
         notifyWebhookOnUrlChange(activeTunnelUrl);
+        if (onUrlChangeCallback) onUrlChangeCallback(getEffectivePublicUrl());
       }
     };
 
@@ -190,7 +232,9 @@ function startLocalhostRunTunnel(targetPort = config.PORT) {
         activeTunnelStatus = 'running';
         db.setSetting('active_tunnel_url', activeTunnelUrl);
         db.setSetting('active_tunnel_provider', 'localhost.run Free Tunnel');
+        autoSyncConfiguredDns(activeTunnelUrl);
         notifyWebhookOnUrlChange(activeTunnelUrl);
+        if (onUrlChangeCallback) onUrlChangeCallback(getEffectivePublicUrl());
       }
     };
 
@@ -236,10 +280,19 @@ function stopTunnel() {
 }
 
 function getTunnelStatus() {
+  const liveUrl = activeTunnelUrl || db.getSetting('active_tunnel_url', null);
+  const customUrl = db.getSetting('custom_public_url', null);
+  const effectiveUrl = getEffectivePublicUrl();
+
+  const cnameTarget = liveUrl ? liveUrl.replace(/^https?:\/\//, '') : '';
+
   return {
     status: activeTunnelStatus,
     provider: activeTunnelProvider,
-    url: activeTunnelUrl || db.getSetting('active_tunnel_url', null),
+    url: liveUrl,
+    customUrl: customUrl,
+    effectiveUrl: effectiveUrl,
+    cnameTarget: cnameTarget,
     error: lastTunnelError,
     autoRestart: autoRestartEnabled,
     lastSync: db.getSetting('last_tunnel_sync', null),
@@ -247,10 +300,49 @@ function getTunnelStatus() {
   };
 }
 
-function setAutoRestart(enabled) {
-  autoRestartEnabled = !!enabled;
-  if (autoRestartEnabled && activeTunnelStatus === 'stopped') {
-    startTunnel('cloudflare');
+// -------------------------------------------------------------
+// 2. Auto-Sync DNS & Webhooks when Tunnel URL changes
+// -------------------------------------------------------------
+async function autoSyncConfiguredDns(newTunnelUrl) {
+  const configs = db.getAllDdnsConfigs();
+  const cnameHost = newTunnelUrl.replace(/^https?:\/\//, '');
+
+  for (const cfg of configs) {
+    try {
+      if (cfg.provider === 'custom_webhook') {
+        const targetUrl = (cfg.extra_config || cfg.auth_token)
+          .replace('{url}', encodeURIComponent(newTunnelUrl))
+          .replace('{cname}', encodeURIComponent(cnameHost))
+          .replace('{domain}', encodeURIComponent(cfg.domain_name));
+        await simpleHttpGet(targetUrl);
+        db.updateDdnsStatus(cfg.provider, cfg.domain_name, 'SUCCESS', cnameHost);
+      } else if (cfg.provider === 'cloudflare_dns') {
+        // If Cloudflare DNS CNAME record update
+        let configObj = {};
+        try { configObj = JSON.parse(cfg.extra_config); } catch (_) {}
+        if (configObj.zoneId && configObj.recordId) {
+          const postData = JSON.stringify({
+            type: 'CNAME',
+            name: cfg.domain_name,
+            content: cnameHost,
+            ttl: 120,
+            proxied: true
+          });
+          const options = {
+            hostname: 'api.cloudflare.com',
+            path: `/client/v4/zones/${configObj.zoneId}/dns_records/${configObj.recordId}`,
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${cfg.auth_token}`,
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData)
+            }
+          };
+          https.request(options).on('error', () => {}).end(postData);
+          db.updateDdnsStatus(cfg.provider, cfg.domain_name, 'SUCCESS', cnameHost);
+        }
+      }
+    } catch (_) {}
   }
 }
 
@@ -262,6 +354,7 @@ function notifyWebhookOnUrlChange(newUrl) {
     const postData = JSON.stringify({
       event: 'tunnel_url_updated',
       public_url: newUrl,
+      effective_url: getEffectivePublicUrl(),
       platform: 'AviCloud',
       timestamp: new Date().toISOString()
     });
@@ -282,7 +375,7 @@ function notifyWebhookOnUrlChange(newUrl) {
 }
 
 // -------------------------------------------------------------
-// 2. Multi-Provider Dynamic DNS & URL Sync Engine
+// 3. Multi-Provider Dynamic DNS & URL Sync Engine
 // -------------------------------------------------------------
 async function getPublicIP() {
   const services = [
@@ -371,7 +464,13 @@ async function updateDynamicDNS(provider, domain, token, extraConfig = '') {
       updateResult = await simpleHttpGet(url);
 
     } else if (provider === 'custom_webhook') {
-      const targetUrl = (extraConfig || token).replace('{ip}', encodeURIComponent(currentIp)).replace('{domain}', encodeURIComponent(domain));
+      const currentTunnel = activeTunnelUrl || '';
+      const cnameHost = currentTunnel.replace(/^https?:\/\//, '');
+      const targetUrl = (extraConfig || token)
+        .replace('{ip}', encodeURIComponent(currentIp))
+        .replace('{url}', encodeURIComponent(currentTunnel))
+        .replace('{cname}', encodeURIComponent(cnameHost))
+        .replace('{domain}', encodeURIComponent(domain));
       updateResult = await simpleHttpGet(targetUrl);
 
     } else if (provider === 'duckdns') {
@@ -439,7 +538,8 @@ module.exports = {
   startLocalhostRunTunnel,
   stopTunnel,
   getTunnelStatus,
-  setAutoRestart,
+  getEffectivePublicUrl,
+  setCustomPublicUrl,
   setUrlChangeCallback,
   getPublicIP,
   updateDynamicDNS,

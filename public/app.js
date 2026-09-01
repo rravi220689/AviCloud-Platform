@@ -5,7 +5,9 @@ let currentShareTarget = null;
 let currentPreviewPath = null;
 let activeTab = 'overview';
 let activeDbId = null;
-let currentLiveTunnelUrl = null;
+let currentEffectiveUrl = null;
+let currentTunnelUrl = null;
+let currentCnameTarget = null;
 
 // WebSocket connection for real-time telemetry
 let ws = null;
@@ -18,10 +20,18 @@ function initWebSocket() {
     try {
       const data = JSON.parse(event.data);
       if (data.type === 'telemetry') {
-        if (data.tunnel && data.tunnel.url && data.tunnel.url !== currentLiveTunnelUrl) {
-          currentLiveTunnelUrl = data.tunnel.url;
-          if (activeTab === 'redirects') loadRedirects();
-          if (activeTab === 'domains') loadDomains();
+        if (data.tunnel) {
+          if (data.tunnel.effectiveUrl && data.tunnel.effectiveUrl !== currentEffectiveUrl) {
+            currentEffectiveUrl = data.tunnel.effectiveUrl;
+            if (activeTab === 'redirects') loadRedirects();
+            if (activeTab === 'domains') loadDomains();
+            if (activeTab === 'shares') loadShares();
+          }
+          if (data.tunnel.cnameTarget) {
+            currentCnameTarget = data.tunnel.cnameTarget;
+            const targetEl = document.getElementById('dnsCnameTarget');
+            if (targetEl) targetEl.innerText = currentCnameTarget;
+          }
         }
         updateTelemetryUI(data.metrics, data.tunnel);
       }
@@ -119,7 +129,7 @@ function switchTab(tabId) {
     databases: 'Database Servers & Connection Hub',
     domains: 'Domains & Dynamic Reverse Proxy',
     redirects: 'Universal URL Rewriter & Outside Links',
-    network: 'Free Remote Tunnels & Dynamic DNS',
+    network: 'Custom Public URL & Remote Tunnels',
     apps: 'Cloud App Store',
     shares: 'Active Public Shares',
     settings: 'Settings & Security'
@@ -157,18 +167,26 @@ function updateTelemetryUI(metrics, tunnel) {
   document.getElementById('statUptime').innerText = `Uptime: ${metrics.uptimeFormatted}`;
   document.getElementById('statCpuBar').style.width = `${metrics.cpuPercentage}%`;
 
-  // Tunnel stats
+  // Tunnel & Public Base URL stats
   if (tunnel) {
     const isRunning = tunnel.status === 'running' || !!tunnel.url;
+    currentTunnelUrl = tunnel.url;
+    currentEffectiveUrl = tunnel.effectiveUrl || tunnel.url || window.location.origin;
+
     document.getElementById('statTunnelStatus').innerText = isRunning ? 'Online (24/7)' : 'Starting...';
-    document.getElementById('statTunnelUrl').innerText = tunnel.url || 'Connecting Tunnel...';
-    currentLiveTunnelUrl = tunnel.url;
+    document.getElementById('statTunnelUrl').innerText = currentEffectiveUrl.replace(/^https?:\/\//, '');
+
+    const effDisplay = document.getElementById('currentEffectiveUrlDisplay');
+    if (effDisplay) effDisplay.innerText = currentEffectiveUrl;
+
+    const cnameTargetEl = document.getElementById('dnsCnameTarget');
+    if (cnameTargetEl) cnameTargetEl.innerText = tunnel.cnameTarget || 'Initializing...';
 
     const badge = document.getElementById('topTunnelBadge');
-    if (isRunning && tunnel.url) {
+    if (isRunning && currentEffectiveUrl) {
       badge.classList.remove('hidden');
       badge.classList.add('flex');
-      badge.innerHTML = `<a href="${tunnel.url}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-[10px]"></i> Outside: ${tunnel.url.replace('https://', '')}</a>`;
+      badge.innerHTML = `<a href="${currentEffectiveUrl}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-[10px]"></i> Outside: ${currentEffectiveUrl.replace(/^https?:\/\//, '')}</a>`;
     } else {
       badge.classList.add('hidden');
       badge.classList.remove('flex');
@@ -195,6 +213,87 @@ function updateTelemetryUI(metrics, tunnel) {
       }
     }
   }
+}
+
+// -------------------------------------------------------------
+// Custom Modifiable Public URL
+// -------------------------------------------------------------
+async function loadPublicUrlSettings() {
+  try {
+    const res = await fetch('/api/network/public-url', {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    const input = document.getElementById('customPublicUrlInput');
+    if (input) input.value = data.customUrl || '';
+
+    const effDisplay = document.getElementById('currentEffectiveUrlDisplay');
+    if (effDisplay) effDisplay.innerText = data.effectiveUrl;
+  } catch (_) {}
+}
+
+document.getElementById('customPublicUrlForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const customUrl = document.getElementById('customPublicUrlInput').value.trim();
+  const feedback = document.getElementById('customUrlFeedback');
+
+  try {
+    feedback.classList.remove('hidden');
+    feedback.className = 'text-xs text-cyan-400';
+    feedback.innerText = 'Saving custom public URL...';
+
+    const res = await fetch('/api/network/public-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({ customUrl })
+    });
+    const data = await res.json();
+    if (data.success) {
+      feedback.className = 'text-xs text-emerald-400 font-bold';
+      feedback.innerText = `✅ ${data.message}`;
+      currentEffectiveUrl = data.effectiveUrl;
+      document.getElementById('currentEffectiveUrlDisplay').innerText = data.effectiveUrl;
+      loadRedirects();
+      loadDomains();
+      loadShares();
+    } else {
+      feedback.className = 'text-xs text-rose-400';
+      feedback.innerText = `Failed to save URL: ${data.error}`;
+    }
+  } catch (_) {
+    feedback.innerText = 'Network error';
+  }
+});
+
+async function clearCustomPublicUrl() {
+  document.getElementById('customPublicUrlInput').value = '';
+  try {
+    const res = await fetch('/api/network/public-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({ customUrl: '' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const feedback = document.getElementById('customUrlFeedback');
+      feedback.classList.remove('hidden');
+      feedback.className = 'text-xs text-cyan-400';
+      feedback.innerText = 'Reverted to automatic live Cloudflare URL';
+      currentEffectiveUrl = data.effectiveUrl;
+      document.getElementById('currentEffectiveUrlDisplay').innerText = data.effectiveUrl;
+      loadRedirects();
+      loadDomains();
+      loadShares();
+    }
+  } catch (_) {}
 }
 
 // -------------------------------------------------------------
@@ -414,12 +513,12 @@ async function loadRedirects() {
       return;
     }
 
-    const liveBase = currentLiveTunnelUrl || window.location.origin;
+    const base = currentEffectiveUrl || window.location.origin;
 
     tbody.innerHTML = data.redirects.map(r => {
       const cleanSlug = r.slug.replace(/^\/+/, '');
       const localUrl = `${window.location.origin}/${cleanSlug}`;
-      const outsideUrl = currentLiveTunnelUrl ? `${currentLiveTunnelUrl}/${cleanSlug}` : localUrl;
+      const outsideUrl = `${base}/${cleanSlug}`;
 
       return `
         <tr class="hover:bg-slate-900/40 transition">
@@ -888,7 +987,7 @@ async function submitShareCreation() {
     });
     const data = await res.json();
     if (data.success) {
-      const base = currentLiveTunnelUrl || window.location.origin;
+      const base = currentEffectiveUrl || window.location.origin;
       const fullShareUrl = `${base}${data.shareUrl}`;
       document.getElementById('generatedShareUrl').value = fullShareUrl;
       document.getElementById('generatedShareUrlBox').classList.remove('hidden');
@@ -918,11 +1017,13 @@ async function loadDomains() {
       return;
     }
 
+    const base = currentEffectiveUrl || window.location.origin;
+
     tbody.innerHTML = data.domains.map(d => `
       <tr class="hover:bg-slate-900/40 transition">
         <td class="p-4 font-mono">
           <span class="font-bold text-cyan-400">${d.domain_name}</span>
-          ${currentLiveTunnelUrl ? `<div class="text-[10px] text-purple-400 mt-0.5 truncate">Outside Alias: <a href="${currentLiveTunnelUrl}" target="_blank" class="underline">${currentLiveTunnelUrl}</a></div>` : ''}
+          ${base ? `<div class="text-[10px] text-purple-400 mt-0.5 truncate">Outside Alias: <a href="${base}" target="_blank" class="underline">${base}</a></div>` : ''}
         </td>
         <td class="p-4 font-mono text-slate-300">${d.target_url}</td>
         <td class="p-4">
@@ -996,6 +1097,8 @@ async function deleteDomain(id) {
 // -------------------------------------------------------------
 async function loadNetworkInfo() {
   try {
+    loadPublicUrlSettings();
+
     const [infoRes, ddnsRes] = await Promise.all([
       fetch('/api/network/info', { headers: { Authorization: `Bearer ${currentToken}` } }),
       fetch('/api/network/ddns', { headers: { Authorization: `Bearer ${currentToken}` } })
@@ -1262,7 +1365,7 @@ async function loadShares() {
       return;
     }
 
-    const base = currentLiveTunnelUrl || window.location.origin;
+    const base = currentEffectiveUrl || window.location.origin;
 
     tbody.innerHTML = data.shares.map(s => {
       const fullUrl = `${base}/s/${s.token}`;

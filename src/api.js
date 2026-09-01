@@ -412,6 +412,21 @@ router.get('/tunnel/status', authRequired, (req, res) => {
   res.json({ success: true, ...tunnel.getTunnelStatus() });
 });
 
+router.post('/network/public-url', authRequired, (req, res) => {
+  const { customUrl } = req.body;
+  const result = tunnel.setCustomPublicUrl(customUrl);
+  res.json(result);
+});
+
+router.get('/network/public-url', authRequired, (req, res) => {
+  res.json({
+    success: true,
+    effectiveUrl: tunnel.getEffectivePublicUrl(),
+    customUrl: db.getSetting('custom_public_url', null),
+    tunnelUrl: db.getSetting('active_tunnel_url', null)
+  });
+});
+
 router.post('/tunnel/start', authRequired, (req, res) => {
   const provider = req.body.provider || 'cloudflare';
   const targetPort = req.body.port || config.PORT;
