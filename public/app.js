@@ -8,6 +8,8 @@ let activeDbId = null;
 let currentEffectiveUrl = null;
 let currentTunnelUrl = null;
 let currentCnameTarget = null;
+let currentHostLocalIp = '165.101.251.196';
+let discoveredServicesList = [];
 
 // WebSocket connection for real-time telemetry
 let ws = null;
@@ -126,11 +128,11 @@ function switchTab(tabId) {
   const titles = {
     overview: 'Platform Overview',
     storage: '100 GB Cloud Drive',
-    nfs: 'NFS Network File System Share',
+    nfs: 'Network Storage Share (SMB / WebDAV / NFS)',
     databases: 'Database Servers & Connection Hub',
-    domains: 'Domains & Dynamic Reverse Proxy',
+    domains: 'Domain Manager & Local IP Router',
     redirects: 'Universal URL Rewriter & Outside Links',
-    network: 'Custom Public URL & Remote Tunnels',
+    network: 'Public URL & Remote Tunnels',
     apps: 'Cloud App Store',
     shares: 'Active Public Shares',
     settings: 'Settings & Security'
@@ -138,9 +140,9 @@ function switchTab(tabId) {
   document.getElementById('headerTitle').innerText = titles[tabId] || 'AviCloud';
 
   if (tabId === 'storage') refreshStorage();
-  if (tabId === 'nfs') loadNfsStatus();
+  if (tabId === 'nfs') loadStorageShares();
   if (tabId === 'databases') loadDatabases();
-  if (tabId === 'domains') loadDomains();
+  if (tabId === 'domains') { loadDomains(); loadDiscoveredServices(); }
   if (tabId === 'redirects') loadRedirects();
   if (tabId === 'network') loadNetworkInfo();
   if (tabId === 'apps') loadApps();
@@ -190,7 +192,7 @@ function updateTelemetryUI(metrics, tunnel) {
     if (isRunning && tunnel.url) {
       badge.classList.remove('hidden');
       badge.classList.add('flex');
-      badge.innerHTML = `<a href="${tunnel.url}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Live Outside URL: ${tunnel.url.replace('https://', '')}</a>`;
+      badge.innerHTML = `<a href="${tunnel.url}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Live Outside: ${tunnel.url.replace('https://', '')}</a>`;
     } else {
       badge.classList.add('hidden');
       badge.classList.remove('flex');
@@ -220,140 +222,255 @@ function updateTelemetryUI(metrics, tunnel) {
 }
 
 // -------------------------------------------------------------
-// Custom Modifiable Public URL
+// Authenticated Network Storage (SMB / WebDAV / NFS)
 // -------------------------------------------------------------
-async function loadPublicUrlSettings() {
+async function loadStorageShares() {
   try {
-    const res = await fetch('/api/network/public-url', {
+    const res = await fetch('/api/storage-shares/status', {
       headers: { Authorization: `Bearer ${currentToken}` }
     });
     const data = await res.json();
     if (!data.success) return;
 
-    const input = document.getElementById('customPublicUrlInput');
-    if (input) input.value = data.customUrl || '';
+    currentHostLocalIp = data.localIp;
+    document.getElementById('storageHostIpDisplay').innerText = data.localIp;
 
-    const effDisplay = document.getElementById('currentEffectiveUrlDisplay');
-    if (effDisplay) effDisplay.innerText = data.effectiveUrl;
-  } catch (_) {}
+    const smbBadge = document.getElementById('sambaStatusBadge');
+    if (data.samba.isRunning) {
+      smbBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      smbBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> SMB ACTIVE (Port 445)';
+    } else {
+      smbBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700';
+      smbBadge.innerText = 'SMB STOPPED';
+    }
+
+    if (data.samba.mountCommands) {
+      document.getElementById('smbCmdWin').innerText = data.samba.mountCommands.windows;
+      document.getElementById('smbCmdMac').innerText = data.samba.mountCommands.macos;
+      document.getElementById('smbCmdLinux').innerText = data.samba.mountCommands.linux;
+    }
+
+    if (data.webdav) {
+      document.getElementById('webdavUrlDisplay').innerText = data.webdav.url;
+    }
+
+    if (data.nfs.mountCommands) {
+      document.getElementById('nfsCmdLinux').innerText = data.nfs.mountCommands.linux;
+    }
+  } catch (err) {
+    console.error('Error loading storage shares:', err);
+  }
 }
 
-document.getElementById('customPublicUrlForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const customUrl = document.getElementById('customPublicUrlInput').value.trim();
-  const feedback = document.getElementById('customUrlFeedback');
+// -------------------------------------------------------------
+// Domain Manager & Discovered Services
+// -------------------------------------------------------------
+async function loadDiscoveredServices() {
+  try {
+    const res = await fetch('/api/domains/discovered-services', {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    currentHostLocalIp = data.localIp;
+    discoveredServicesList = data.services;
+
+    const ipDisplay = document.getElementById('discoveredLocalIpDisplay');
+    if (ipDisplay) ipDisplay.innerText = data.localIp;
+
+    // Render discovered service cards
+    const grid = document.getElementById('discoveredServicesGrid');
+    if (grid) {
+      grid.innerHTML = data.services.map((s, idx) => `
+        <div onclick="quickCreateDomainForService(${idx})" class="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl cursor-pointer transition flex items-center justify-between group">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <h5 class="text-xs font-bold text-white group-hover:text-cyan-400 transition">${s.name}</h5>
+            </div>
+            <p class="text-[10px] text-slate-400 font-mono mt-0.5">${s.url} • ${s.desc}</p>
+          </div>
+          <button class="px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded-lg text-[10px] font-bold group-hover:bg-cyan-500 group-hover:text-slate-950 transition">
+            Map Domain
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Populate dropdown in Add Domain modal
+    const presetSelect = document.getElementById('domainServicePreset');
+    if (presetSelect) {
+      presetSelect.innerHTML = '<option value="">-- Choose a discovered running local service --</option>' +
+        data.services.map((s, idx) => `<option value="${idx}">${s.name} (${s.url})</option>`).join('');
+    }
+  } catch (err) {
+    console.error('Error loading discovered services:', err);
+  }
+}
+
+function quickCreateDomainForService(idx) {
+  const s = discoveredServicesList[idx];
+  if (!s) return;
+  openAddDomainModal();
+  applyServicePreset(idx);
+}
+
+function applyServicePreset(idx) {
+  const s = discoveredServicesList[idx];
+  if (!s) return;
+
+  const slug = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  document.getElementById('newDomainName').value = `${slug}.local`;
+  document.getElementById('newTargetUrl').value = s.url;
+  document.getElementById('newDomainDesc').value = `Local domain mapping for ${s.name}`;
+  testTargetUrlDirect(s.url);
+}
+
+async function testTargetUrlDirect(targetUrl) {
+  const feedback = document.getElementById('domainTestFeedback');
+  if (!feedback) return;
+  if (!targetUrl) return;
+
+  feedback.classList.remove('hidden');
+  feedback.className = 'text-[11px] mt-1 text-cyan-400';
+  feedback.innerText = 'Testing connection to target...';
 
   try {
-    feedback.classList.remove('hidden');
-    feedback.className = 'text-xs text-cyan-400';
-    feedback.innerText = 'Saving custom public URL...';
-
-    const res = await fetch('/api/network/public-url', {
+    const res = await fetch('/api/domains/test', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${currentToken}`
       },
-      body: JSON.stringify({ customUrl })
+      body: JSON.stringify({ target_url: targetUrl })
     });
     const data = await res.json();
     if (data.success) {
-      feedback.className = 'text-xs text-emerald-400 font-bold';
-      feedback.innerText = `✅ ${data.message}`;
-      currentEffectiveUrl = data.effectiveUrl;
-      document.getElementById('currentEffectiveUrlDisplay').innerText = data.effectiveUrl;
-      loadRedirects();
-      loadDomains();
-      loadShares();
+      feedback.className = 'text-[11px] mt-1 text-emerald-400 font-bold';
+      feedback.innerText = `✅ Target Reachable! HTTP ${data.status} ${data.statusText} (${data.latencyMs}ms)`;
     } else {
-      feedback.className = 'text-xs text-rose-400';
-      feedback.innerText = `Failed to save URL: ${data.error}`;
+      feedback.className = 'text-[11px] mt-1 text-amber-400 font-bold';
+      feedback.innerText = `⚠️ Connection Warning: ${data.error}`;
     }
   } catch (_) {
-    feedback.innerText = 'Network error';
+    feedback.className = 'text-[11px] mt-1 text-rose-400';
+    feedback.innerText = 'Target connection failed';
+  }
+}
+
+async function loadDomains() {
+  try {
+    const res = await fetch('/api/domains', {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    const tbody = document.getElementById('domainsTableBody');
+    if (!data.domains || data.domains.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No custom domain routes configured yet. Click "Create New Domain Route" above!</td></tr>';
+      return;
+    }
+
+    const domainNamesList = data.domains.map(d => d.domain_name).join(' ');
+    const hostsSnippet = document.getElementById('hostsFileSnippet');
+    if (hostsSnippet) {
+      hostsSnippet.innerText = `${data.localIp || currentHostLocalIp} ${domainNamesList || 'notes.local notekeeper.local storage.local'}`;
+    }
+
+    tbody.innerHTML = data.domains.map(d => {
+      return `
+        <tr class="hover:bg-slate-900/40 transition">
+          <td class="p-4 font-mono">
+            <span class="font-bold text-cyan-400 text-sm">${d.domain_name}</span>
+            <div class="mt-1 space-y-0.5 text-[10px]">
+              <div class="text-emerald-400 flex items-center gap-1.5 truncate">
+                <i class="fa-solid fa-wifi"></i>
+                <span>Local (Zero-Config):</span>
+                <a href="${d.sslipUrl}" target="_blank" class="hover:underline font-bold">${d.sslipUrl}</a>
+              </div>
+              ${d.outsideUrl ? `
+                <div class="text-purple-400 flex items-center gap-1.5 truncate">
+                  <i class="fa-solid fa-globe"></i>
+                  <span>Outside Internet:</span>
+                  <a href="${d.outsideUrl}" target="_blank" class="hover:underline font-bold">${d.outsideUrl}</a>
+                </div>
+              ` : ''}
+            </div>
+          </td>
+          <td class="p-4 font-mono text-slate-300">
+            <a href="${d.target_url}" target="_blank" class="hover:underline font-bold">${d.target_url}</a>
+          </td>
+          <td class="p-4">
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${d.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}">
+              ${d.is_active ? 'ACTIVE' : 'DISABLED'}
+            </span>
+          </td>
+          <td class="p-4 text-slate-300 font-bold">${d.hits || 0}</td>
+          <td class="p-4 text-slate-400 text-xs">${d.description || '--'}</td>
+          <td class="p-4 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <a href="${d.sslipUrl}" target="_blank" class="p-1.5 text-emerald-400 hover:text-emerald-300" title="Open Local"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+              <button onclick="testTargetUrlDirect('${d.target_url}')" class="p-1.5 text-cyan-400 hover:text-cyan-300" title="Test Target Connection"><i class="fa-solid fa-bolt"></i></button>
+              <button onclick="deleteDomain(${d.id})" class="p-1.5 text-slate-500 hover:text-rose-400 transition" title="Delete Route"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading domains:', err);
+  }
+}
+
+function openAddDomainModal() {
+  document.getElementById('addDomainModal').classList.remove('hidden');
+}
+
+function closeAddDomainModal() {
+  document.getElementById('addDomainModal').classList.add('hidden');
+  const fb = document.getElementById('domainTestFeedback');
+  if (fb) fb.classList.add('hidden');
+}
+
+document.getElementById('addDomainForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domain_name = document.getElementById('newDomainName').value.trim();
+  const target_url = document.getElementById('newTargetUrl').value.trim();
+  const description = document.getElementById('newDomainDesc').value.trim();
+
+  try {
+    const res = await fetch('/api/domains', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({ domain_name, target_url, description })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeAddDomainModal();
+      loadDomains();
+    } else {
+      alert(data.error || 'Failed to create domain');
+    }
+  } catch (err) {
+    alert('Network error');
   }
 });
 
-async function clearCustomPublicUrl() {
-  document.getElementById('customPublicUrlInput').value = '';
+async function deleteDomain(id) {
+  if (!confirm('Are you sure you want to delete this domain route?')) return;
   try {
-    const res = await fetch('/api/network/public-url', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${currentToken}`
-      },
-      body: JSON.stringify({ customUrl: '' })
+    const res = await fetch(`/api/domains/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${currentToken}` }
     });
     const data = await res.json();
-    if (data.success) {
-      const feedback = document.getElementById('customUrlFeedback');
-      feedback.classList.remove('hidden');
-      feedback.className = 'text-xs text-cyan-400';
-      feedback.innerText = 'Reverted to automatic live Cloudflare URL';
-      currentEffectiveUrl = data.effectiveUrl;
-      document.getElementById('currentEffectiveUrlDisplay').innerText = data.effectiveUrl;
-      loadRedirects();
-      loadDomains();
-      loadShares();
-    }
+    if (data.success) loadDomains();
   } catch (_) {}
-}
-
-// -------------------------------------------------------------
-// NFS Network File Share
-// -------------------------------------------------------------
-async function loadNfsStatus() {
-  try {
-    const res = await fetch('/api/nfs/status', {
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-    const data = await res.json();
-    if (!data.success) return;
-
-    const badge = document.getElementById('nfsStatusBadge');
-    const toggleBtn = document.getElementById('nfsToggleBtn');
-
-    if (data.isRunning) {
-      badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> NFS ACTIVE (Port 2049)';
-      toggleBtn.className = 'px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/30 transition';
-      toggleBtn.innerText = 'Stop NFS';
-    } else {
-      badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700';
-      badge.innerText = 'NFS STOPPED';
-      toggleBtn.className = 'gradient-btn px-4 py-2 text-white text-xs font-semibold rounded-xl shadow transition';
-      toggleBtn.innerText = 'Start NFS';
-    }
-
-    if (data.mountCommands) {
-      document.getElementById('nfsCmdLinux').innerText = data.mountCommands.linux;
-      document.getElementById('nfsCmdMac').innerText = data.mountCommands.macos;
-      document.getElementById('nfsCmdWin').innerText = data.mountCommands.windows;
-    }
-  } catch (err) {
-    console.error('Error loading NFS status:', err);
-  }
-}
-
-async function toggleNfsServer() {
-  try {
-    const statusRes = await fetch('/api/nfs/status', {
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-    const statusData = await statusRes.json();
-    const action = statusData.isRunning ? 'stop' : 'start';
-
-    const res = await fetch(`/api/nfs/${action}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-    const data = await res.json();
-    alert(data.message || `NFS server ${action}ed`);
-    loadNfsStatus();
-  } catch (_) {
-    alert('Failed to toggle NFS server');
-  }
 }
 
 // -------------------------------------------------------------
@@ -1006,104 +1123,10 @@ async function submitShareCreation() {
 }
 
 // -------------------------------------------------------------
-// Domains & Reverse Proxy
-// -------------------------------------------------------------
-async function loadDomains() {
-  try {
-    const res = await fetch('/api/domains', {
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-    const data = await res.json();
-    if (!data.success) return;
-
-    const tbody = document.getElementById('domainsTableBody');
-    if (data.domains.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No custom domain routes configured yet.</td></tr>';
-      return;
-    }
-
-    const base = currentTunnelUrl || currentEffectiveUrl || window.location.origin;
-
-    tbody.innerHTML = data.domains.map(d => `
-      <tr class="hover:bg-slate-900/40 transition">
-        <td class="p-4 font-mono">
-          <span class="font-bold text-cyan-400">${d.domain_name}</span>
-          ${base ? `<div class="text-[10px] text-purple-400 mt-0.5 truncate">Live Outside URL: <a href="${base}" target="_blank" class="underline">${base}</a></div>` : ''}
-        </td>
-        <td class="p-4 font-mono text-slate-300">${d.target_url}</td>
-        <td class="p-4">
-          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${d.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}">
-            ${d.is_active ? 'ACTIVE' : 'DISABLED'}
-          </span>
-        </td>
-        <td class="p-4 text-slate-300 font-bold">${d.hits || 0}</td>
-        <td class="p-4 text-slate-400">${d.description || '--'}</td>
-        <td class="p-4 text-right">
-          <button onclick="deleteDomain(${d.id})" class="p-1.5 text-slate-500 hover:text-rose-400 transition" title="Delete Route">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
-  } catch (err) {
-    console.error('Error loading domains:', err);
-  }
-}
-
-function openAddDomainModal() {
-  document.getElementById('addDomainModal').classList.remove('hidden');
-}
-
-function closeAddDomainModal() {
-  document.getElementById('addDomainModal').classList.add('hidden');
-}
-
-document.getElementById('addDomainForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const domain_name = document.getElementById('newDomainName').value;
-  const target_url = document.getElementById('newTargetUrl').value;
-  const description = document.getElementById('newDomainDesc').value;
-
-  try {
-    const res = await fetch('/api/domains', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${currentToken}`
-      },
-      body: JSON.stringify({ domain_name, target_url, description })
-    });
-    const data = await res.json();
-    if (data.success) {
-      closeAddDomainModal();
-      loadDomains();
-    } else {
-      alert(data.error || 'Failed to create domain');
-    }
-  } catch (err) {
-    alert('Network error');
-  }
-});
-
-async function deleteDomain(id) {
-  if (!confirm('Are you sure you want to delete this domain route?')) return;
-  try {
-    const res = await fetch(`/api/domains/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-    const data = await res.json();
-    if (data.success) loadDomains();
-  } catch (_) {}
-}
-
-// -------------------------------------------------------------
 // Free Remote Tunnels & Dynamic DNS
 // -------------------------------------------------------------
 async function loadNetworkInfo() {
   try {
-    loadPublicUrlSettings();
-
     const [infoRes, ddnsRes] = await Promise.all([
       fetch('/api/network/info', { headers: { Authorization: `Bearer ${currentToken}` } }),
       fetch('/api/network/ddns', { headers: { Authorization: `Bearer ${currentToken}` } })
@@ -1420,7 +1443,7 @@ function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
     alert('Copied to clipboard: ' + text);
   }).catch(() => {
-    prompt('Copy URL manually:', text);
+    prompt('Copy manually:', text);
   });
 }
 
@@ -1430,9 +1453,10 @@ function escapeHtml(str) {
 
 async function loadAllData() {
   refreshStorage();
-  loadNfsStatus();
+  loadStorageShares();
   loadDatabases();
   loadDomains();
+  loadDiscoveredServices();
   loadRedirects();
   loadNetworkInfo();
   loadApps();

@@ -5,12 +5,8 @@ node_modules/
 bin/cloudflared
 
 # Database & Runtime logs
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/*.pid
-data/*.log
-data/autostart.log
+data/
+!data/.gitkeep
 
 # User Cloud Storage Files (keep folder structure)
 storage_data/*

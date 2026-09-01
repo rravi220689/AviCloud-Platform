@@ -100,8 +100,18 @@ function initDatabase() {
 }
 
 // User Helpers
+const auth = require('./auth');
+
 function getUserByUsername(username) {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+}
+
+function getUserById(id) {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+}
+
+function verifyPassword(password, hash) {
+  return hashPassword(password) === hash;
 }
 
 function verifyUserPassword(username, password) {
@@ -113,6 +123,18 @@ function verifyUserPassword(username, password) {
     return safeUser;
   }
   return null;
+}
+
+function createSession(userId) {
+  const user = getUserById(userId);
+  if (!user) return null;
+  return auth.signToken({ id: user.id, username: user.username, role: user.role });
+}
+
+function getUserByToken(token) {
+  const payload = auth.verifyToken(token);
+  if (!payload || !payload.id) return null;
+  return getUserById(payload.id);
 }
 
 function updatePassword(userId, newPassword) {
@@ -127,6 +149,30 @@ function getAllDomains() {
 
 function getDomainByName(domainName) {
   return db.prepare('SELECT * FROM domains WHERE LOWER(domain_name) = LOWER(?)').get(domainName);
+}
+
+function createDomain(domainName, targetUrl, sslMode = 'auto', description = '') {
+  return addDomain(domainName, targetUrl, sslMode, description);
+}
+
+function createRedirect(slug, targetUrl, redirectType = 'proxy', description = '') {
+  return addRedirect(slug, targetUrl, redirectType, description);
+}
+
+function getShareByToken(token) {
+  return getShareLinkByToken(token);
+}
+
+function getActiveShares() {
+  return getAllShareLinks();
+}
+
+function deleteShare(idOrToken) {
+  return deleteShareLink(idOrToken);
+}
+
+function incrementShareDownload(token) {
+  return incrementShareDownloads(token);
 }
 
 function addDomain(domainName, targetUrl, description = '') {
@@ -301,9 +347,16 @@ module.exports = {
   deleteDdnsConfig,
   getAllShareLinks,
   getShareLinkByToken,
-  createShareLink,
-  incrementShareDownloads,
-  deleteShareLink,
+  getUserById,
+  getUserByToken,
+  createSession,
+  verifyPassword,
+  createDomain,
+  createRedirect,
+  getShareByToken,
+  getActiveShares,
+  deleteShare,
+  incrementShareDownload,
   getSetting,
   setSetting
 };

@@ -1,35 +1,52 @@
 const express = require('express');
+const router = express.Router();
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const mime = require('mime-types');
-const { v4: uuidv4 } = require('uuid');
-const { spawn } = require('child_process');
-
+const http = require('http');
+const https = require('https');
 const config = require('./config');
 const db = require('./db');
-const auth = require('./auth');
 const storage = require('./storage');
+const database = require('./databaseManager');
 const tunnel = require('./tunnel');
-const docker = require('./docker');
-const system = require('./system');
-const multipart = require('./multipart');
-const databaseManager = require('./databaseManager');
-const nfsManager = require('./nfsManager');
+const storageShareManager = require('./storageShareManager');
+const { getDockerContainers, deployContainerTemplate, controlContainer, APP_TEMPLATES } = require('./docker');
 
-const router = express.Router();
+// Setup multer for 100GB Cloud Drive uploads
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const targetDir = req.uploadTargetDir || config.STORAGE_ROOT;
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      cb(null, targetDir);
+    },
+    filename: (req, file, cb) => {
+      // Decode UTF-8 filenames properly
+      const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      cb(null, originalName);
+    }
+  }),
+  limits: {
+    fileSize: 100 * 1024 * 1024 * 1024 // 100 GB Max File Size
+  }
+});
 
+// -------------------------------------------------------------
 // Authentication Middleware
+// -------------------------------------------------------------
 function authRequired(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : req.query.token;
-
-  if (!token) {
-    return res.status(401).json({ success: false, error: 'Authentication token required' });
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Unauthorized. Please login.' });
   }
 
-  const user = auth.verifyToken(token);
+  const token = authHeader.split(' ')[1];
+  const user = db.getUserByToken(token);
   if (!user) {
-    return res.status(401).json({ success: false, error: 'Invalid or expired session token' });
+    return res.status(401).json({ success: false, error: 'Invalid or expired session.' });
   }
 
   req.user = user;
@@ -45,13 +62,12 @@ router.post('/auth/login', (req, res) => {
     return res.status(400).json({ success: false, error: 'Username and password required' });
   }
 
-  const user = db.verifyUserPassword(username, password);
-  if (!user) {
+  const user = db.getUserByUsername(username);
+  if (!user || !db.verifyPassword(password, user.password_hash)) {
     return res.status(401).json({ success: false, error: 'Invalid username or password' });
   }
 
-  const token = auth.signToken({ id: user.id, username: user.username, role: user.role });
-
+  const token = db.createSession(user.id);
   res.json({
     success: true,
     token,
@@ -60,18 +76,21 @@ router.post('/auth/login', (req, res) => {
 });
 
 router.get('/auth/me', authRequired, (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({
+    success: true,
+    user: { id: req.user.id, username: req.user.username, role: req.user.role }
+  });
 });
 
-router.post('/auth/change-password', authRequired, (req, res) => {
-  const { oldPassword, newPassword } = req.body;
-  if (!oldPassword || !newPassword || newPassword.length < 6) {
+router.post('/auth/password', authRequired, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword || newPassword.length < 6) {
     return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
   }
 
-  const user = db.verifyUserPassword(req.user.username, oldPassword);
-  if (!user) {
-    return res.status(401).json({ success: false, error: 'Incorrect current password' });
+  const user = db.getUserById(req.user.id);
+  if (!db.verifyPassword(currentPassword, user.password_hash)) {
+    return res.status(400).json({ success: false, error: 'Current password is incorrect' });
   }
 
   db.updatePassword(req.user.id, newPassword);
@@ -79,335 +98,279 @@ router.post('/auth/change-password', authRequired, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 2. Storage Endpoints (100GB Cloud Drive)
+// 2. 100 GB Cloud Storage Drive Endpoints
 // -------------------------------------------------------------
 router.get('/storage/files', authRequired, (req, res) => {
+  const reqPath = req.query.path || '';
   try {
-    const subPath = req.query.path || '';
-    const result = storage.listFiles(subPath);
-    res.json({ success: true, ...result });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-router.get('/storage/stats', authRequired, (req, res) => {
-  res.json({ success: true, stats: storage.getStorageStats() });
-});
-
-router.post('/storage/upload', authRequired, async (req, res) => {
-  try {
-    const subPath = req.query.path || '';
-    const destDir = storage.resolveSafePath(subPath);
-    const files = await multipart.parseMultipart(req, destDir);
-    res.json({
-      success: true,
-      message: `Successfully uploaded ${files.length} file(s)`,
-      files,
-      stats: storage.getStorageStats()
-    });
+    const list = storage.listFiles(reqPath);
+    res.json({ success: true, ...list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+router.post('/storage/upload', authRequired, (req, res, next) => {
+  const reqPath = req.query.path || '';
+  req.uploadTargetDir = path.join(config.STORAGE_ROOT, reqPath);
+  next();
+}, upload.array('files', 100), (req, res) => {
+  res.json({
+    success: true,
+    message: `Uploaded ${req.files ? req.files.length : 0} files successfully`,
+    files: (req.files || []).map(f => ({ name: f.filename, size: f.size }))
+  });
+});
+
 router.post('/storage/folder', authRequired, (req, res) => {
-  try {
-    const { path: relPath, name } = req.body;
-    const result = storage.createFolder(relPath || '', name);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+  const { path: parentPath, name } = req.body;
+  const result = storage.createFolder(parentPath || '', name);
+  if (result.success) res.json(result);
+  else res.status(400).json(result);
 });
 
 router.delete('/storage/item', authRequired, (req, res) => {
-  try {
-    const { path: relPath } = req.body;
-    const result = storage.deleteItem(relPath);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/storage/rename', authRequired, (req, res) => {
-  try {
-    const { path: relPath, newName } = req.body;
-    const result = storage.renameItem(relPath, newName);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-router.get('/storage/text', authRequired, (req, res) => {
-  try {
-    const { path: relPath } = req.query;
-    const content = storage.readTextFile(relPath);
-    res.json({ success: true, content });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/storage/text', authRequired, (req, res) => {
-  try {
-    const { path: relPath, content } = req.body;
-    const result = storage.saveTextFile(relPath, content);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+  const { path: targetPath } = req.body;
+  const result = storage.deleteItem(targetPath || '');
+  if (result.success) res.json(result);
+  else res.status(400).json(result);
 });
 
 router.get('/storage/download', (req, res) => {
-  try {
-    const relPath = req.query.path || '';
-    const token = req.query.token;
+  const token = req.query.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+  if (!token || !db.getUserByToken(token)) {
+    return res.status(401).send('Unauthorized');
+  }
 
-    if (!token) {
-      const authHeader = req.headers.authorization || '';
-      const jwtToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      if (!jwtToken || !auth.verifyToken(jwtToken)) {
-        return res.status(401).send('Unauthorized');
-      }
-    } else {
-      if (!auth.verifyToken(token)) {
-        return res.status(401).send('Unauthorized');
-      }
-    }
+  const reqPath = req.query.path || '';
+  const isInline = req.query.inline === '1';
+  storage.streamFile(reqPath, req, res, isInline);
+});
 
-    const fullPath = storage.resolveSafePath(relPath);
-    if (!fs.existsSync(fullPath)) {
-      return res.status(404).send('File not found');
-    }
+router.get('/storage/text', authRequired, (req, res) => {
+  const reqPath = req.query.path || '';
+  const result = storage.readFileText(reqPath);
+  if (result.success) res.json(result);
+  else res.status(400).json(result);
+});
 
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      const zipName = (path.basename(fullPath) || 'cloud_files') + '.zip';
-      res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
-      const zipProc = spawn('zip', ['-r', '-', '.'], { cwd: fullPath });
-      zipProc.stdout.pipe(res);
-    } else {
-      const range = req.headers.range;
-      const mimeType = mime.lookup(fullPath) || 'application/octet-stream';
-      const fileSize = stat.size;
+router.post('/storage/text', authRequired, (req, res) => {
+  const { path: targetPath, content } = req.body;
+  const result = storage.writeFileText(targetPath, content);
+  if (result.success) res.json(result);
+  else res.status(400).json(result);
+});
 
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunksize = (end - start) + 1;
-        const file = fs.createReadStream(fullPath, { start, end });
-        const head = {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': mimeType,
-        };
-        res.writeHead(206, head);
-        file.pipe(res);
-      } else {
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Length', fileSize);
-        res.setHeader('Content-Disposition', req.query.inline === '1' ? 'inline' : `attachment; filename="${path.basename(fullPath)}"`);
-        fs.createReadStream(fullPath).pipe(res);
-      }
-    }
-  } catch (err) {
-    res.status(500).send(err.message);
+// -------------------------------------------------------------
+// 3. Authenticated Network Storage (Samba SMB + WebDAV + NFS)
+// -------------------------------------------------------------
+router.get('/storage-shares/status', authRequired, (req, res) => {
+  res.json(storageShareManager.getStorageShareStatus());
+});
+
+router.post('/storage-shares/samba/:action', authRequired, (req, res) => {
+  const action = req.params.action;
+  if (action === 'start') {
+    const result = storageShareManager.startSamba('avinash', 'Avinash@Cloud1989');
+    res.json(result);
+  } else {
+    const result = storageShareManager.stopSamba();
+    res.json(result);
+  }
+});
+
+router.post('/storage-shares/nfs/:action', authRequired, (req, res) => {
+  const action = req.params.action;
+  if (action === 'start') {
+    const result = storageShareManager.startNfs();
+    res.json(result);
+  } else {
+    const result = storageShareManager.stopNfs();
+    res.json(result);
+  }
+});
+
+// Backwards compatibility for existing NFS routes
+router.get('/nfs/status', authRequired, (req, res) => {
+  const status = storageShareManager.getStorageShareStatus();
+  res.json({ success: true, isRunning: status.nfs.isRunning, port: 2049, exportPath: '/storage', mountCommands: status.nfs.mountCommands });
+});
+
+router.post('/nfs/:action', authRequired, (req, res) => {
+  const action = req.params.action;
+  if (action === 'start') {
+    res.json(storageShareManager.startNfs());
+  } else {
+    res.json(storageShareManager.stopNfs());
   }
 });
 
 // -------------------------------------------------------------
-// 3. NFS Network File Share API
+// 4. Public File Shares
 // -------------------------------------------------------------
-router.get('/nfs/status', authRequired, (req, res) => {
-  const host = req.headers.host ? req.headers.host.split(':')[0] : '127.0.0.1';
-  res.json({ success: true, ...nfsManager.getNfsInfo(host) });
+router.post('/shares/create', authRequired, (req, res) => {
+  const { path: filePath, password, expiresDays } = req.body;
+  const result = storage.createShare(filePath, password, expiresDays, req.user.id);
+  if (result.success) res.json(result);
+  else res.status(400).json(result);
 });
 
-router.post('/nfs/start', authRequired, (req, res) => {
-  const result = nfsManager.startNfsServer();
-  res.json(result);
-});
-
-router.post('/nfs/stop', authRequired, (req, res) => {
-  const result = nfsManager.stopNfsServer();
-  res.json(result);
-});
-
-// -------------------------------------------------------------
-// 4. Public Share Links Management
-// -------------------------------------------------------------
 router.get('/shares', authRequired, (req, res) => {
-  const shares = db.getAllShareLinks();
+  const shares = db.getActiveShares();
   res.json({ success: true, shares });
 });
 
-router.post('/shares/create', authRequired, (req, res) => {
-  try {
-    const { path: relPath, password, expiresDays, maxDownloads } = req.body;
-    const fullPath = storage.resolveSafePath(relPath);
-    if (!fs.existsSync(fullPath)) throw new Error('File or folder not found');
-
-    const stat = fs.statSync(fullPath);
-    const token = uuidv4().replace(/-/g, '').slice(0, 16);
-    let expiresAt = null;
-
-    if (expiresDays && parseInt(expiresDays, 10) > 0) {
-      const exp = new Date();
-      exp.setDate(exp.getDate() + parseInt(expiresDays, 10));
-      expiresAt = exp.toISOString();
-    }
-
-    db.createShareLink({
-      token,
-      filePath: relPath,
-      isDirectory: stat.isDirectory(),
-      name: path.basename(fullPath) || 'Storage Root',
-      password: password || null,
-      expiresAt,
-      maxDownloads: parseInt(maxDownloads || '0', 10)
-    });
-
-    res.json({
-      success: true,
-      token,
-      shareUrl: `/s/${token}`,
-      message: 'Share link created successfully'
-    });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
-
 router.delete('/shares/:id', authRequired, (req, res) => {
-  try {
-    db.deleteShareLink(req.params.id);
-    res.json({ success: true, message: 'Share link revoked' });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+  db.deleteShare(parseInt(req.params.id, 10));
+  res.json({ success: true, message: 'Share link revoked' });
 });
 
 // -------------------------------------------------------------
-// 5. Domains & Dynamic Reverse Proxy API
+// 5. Database Hub (All 5 Connected Databases)
+// -------------------------------------------------------------
+router.get('/databases', authRequired, async (req, res) => {
+  const list = await database.getAllDatabasesWithStatus();
+  res.json({ success: true, databases: list });
+});
+
+router.post('/databases/query', authRequired, async (req, res) => {
+  const { dbId, query } = req.body;
+  if (!dbId || !query) {
+    return res.status(400).json({ success: false, error: 'Database ID and Query required' });
+  }
+
+  const result = await database.executeQuery(dbId, query);
+  res.json(result);
+});
+
+router.post('/databases/backup', authRequired, async (req, res) => {
+  const { dbId } = req.body;
+  const result = await database.backupDatabaseToStorage(dbId);
+  res.json(result);
+});
+
+// -------------------------------------------------------------
+// 6. Domain Manager & Discovered Local Services
 // -------------------------------------------------------------
 router.get('/domains', authRequired, (req, res) => {
   const domains = db.getAllDomains();
-  res.json({ success: true, domains });
+  const localIp = storageShareManager.getLocalIp();
+  const liveTunnel = tunnel.getTunnelStatus().url;
+
+  const augmented = domains.map(d => {
+    const slug = d.domain_name.replace(/\.local$/, '').replace(/[^a-z0-9_-]+/gi, '-');
+    return {
+      ...d,
+      localDirectUrl: `http://${d.domain_name}:${config.PROXY_PORT}`,
+      sslipUrl: `http://${slug}.${localIp}.sslip.io:${config.PROXY_PORT}`,
+      outsideUrl: liveTunnel ? `${liveTunnel}/${slug}` : null
+    };
+  });
+
+  res.json({ success: true, domains: augmented, localIp, liveTunnel });
+});
+
+router.get('/domains/discovered-services', authRequired, (req, res) => {
+  const localIp = storageShareManager.getLocalIp();
+  const services = [
+    { name: 'AviCloud Personal Platform', slug: 'cloud', port: 9000, url: 'http://127.0.0.1:9000', desc: 'Main Operating Dashboard & Storage' },
+    { name: 'NoteKeeper ASP.NET App', slug: 'notekeeper', port: 4004, url: 'http://127.0.0.1:4004', desc: 'Active Application Container' },
+    { name: 'PersonalNotes App', slug: 'personalnotes', port: 4005, url: 'http://127.0.0.1:4005', desc: 'Active Application Container' },
+    { name: 'NoteKeeper API Backend', slug: 'notekeeper-api', port: 4000, url: 'http://127.0.0.1:4000', desc: 'REST API Service' },
+    { name: 'NoteKeeper Web Frontend', slug: 'notekeeper-web', port: 4001, url: 'http://127.0.0.1:4001', desc: 'Web Client Frontend' },
+    { name: 'IP Notifier Service', slug: 'ipnotifier', port: 4002, url: 'http://127.0.0.1:4002', desc: 'Background Daemon Service' },
+    { name: 'Khatabook Service', slug: 'khatabook', port: 4003, url: 'http://127.0.0.1:4003', desc: 'Business Accounting App' },
+    { name: 'Jenkins CI/CD Automation', slug: 'jenkins', port: 8080, url: 'http://127.0.0.1:8080', desc: 'Continuous Integration Server' },
+    { name: 'LocalDeploy App Platform', slug: 'localdeploy', port: 3000, url: 'http://127.0.0.1:3000', desc: 'Deployment Orchestrator' }
+  ];
+  res.json({ success: true, localIp, services });
 });
 
 router.post('/domains', authRequired, (req, res) => {
+  const { domain_name, target_url, ssl_mode, description, createOutsideRewrite } = req.body;
+  if (!domain_name || !target_url) {
+    return res.status(400).json({ success: false, error: 'Domain name and target URL required' });
+  }
+
+  const cleanDomain = domain_name.trim().toLowerCase();
+  const cleanTarget = target_url.trim();
+
   try {
-    const { domain_name, target_url, description } = req.body;
-    if (!domain_name || !target_url) {
-      return res.status(400).json({ success: false, error: 'Domain name and target URL are required' });
+    const info = db.createDomain(cleanDomain, cleanTarget, ssl_mode || 'auto', description || '');
+    const slug = cleanDomain.replace(/\.local$/, '').replace(/[^a-z0-9_-]+/g, '-');
+
+    if (createOutsideRewrite !== false && slug) {
+      try {
+        db.createRedirect(slug, cleanTarget, 'proxy', `Outside Link for ${cleanDomain}`);
+      } catch (_) {}
     }
 
-    const cleanDomain = domain_name.toLowerCase().trim().replace(/^https?:\/\//, '');
-    db.addDomain(cleanDomain, target_url, description || '');
-    res.json({ success: true, message: `Domain ${cleanDomain} created and mapped to ${target_url}` });
+    res.json({
+      success: true,
+      id: info.lastInsertRowid,
+      domain: cleanDomain,
+      message: `Domain ${cleanDomain} created -> ${cleanTarget}`
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
-router.put('/domains/:id', authRequired, (req, res) => {
+router.post('/domains/test', authRequired, async (req, res) => {
+  const { target_url } = req.body;
+  if (!target_url) return res.status(400).json({ success: false, error: 'Target URL required' });
+
   try {
-    const { target_url, is_active, description } = req.body;
-    db.updateDomain(req.params.id, target_url, is_active, description || '');
-    res.json({ success: true, message: 'Domain updated successfully' });
+    const client = target_url.startsWith('https') ? https : http;
+    const startTime = Date.now();
+    const reqTest = client.get(target_url, { timeout: 3000 }, (resp) => {
+      res.json({
+        success: true,
+        status: resp.statusCode,
+        statusText: resp.statusMessage,
+        latencyMs: Date.now() - startTime
+      });
+    });
+    reqTest.on('error', (err) => {
+      res.json({ success: false, error: err.message });
+    });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.json({ success: false, error: err.message });
   }
 });
 
 router.delete('/domains/:id', authRequired, (req, res) => {
-  try {
-    db.deleteDomain(req.params.id);
-    res.json({ success: true, message: 'Domain deleted' });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+  db.deleteDomain(parseInt(req.params.id, 10));
+  res.json({ success: true, message: 'Domain route removed' });
 });
 
 // -------------------------------------------------------------
-// 6. Universal URL Rewriting & Redirection Rules
+// 7. Universal URL Rewriter & Vanity Slugs
 // -------------------------------------------------------------
 router.get('/redirects', authRequired, (req, res) => {
-  const redirects = db.getAllRedirects();
-  res.json({ success: true, redirects });
+  const list = db.getAllRedirects();
+  res.json({ success: true, redirects: list });
 });
 
 router.post('/redirects', authRequired, (req, res) => {
-  try {
-    const { slug, target_url, redirect_type, description } = req.body;
-    if (!slug || !target_url) {
-      return res.status(400).json({ success: false, error: 'Slug and target URL are required' });
-    }
-    const cleanSlug = slug.toLowerCase().trim().replace(/^\/+|\/+$/g, '');
-    db.addRedirect(cleanSlug, target_url, redirect_type || '302', description || '');
-    res.json({ success: true, message: `Rewrite rule /${cleanSlug} created -> ${target_url}` });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+  const { slug, target_url, redirect_type, description } = req.body;
+  if (!slug || !target_url) {
+    return res.status(400).json({ success: false, error: 'Slug and target URL are required' });
   }
+
+  const cleanSlug = slug.replace(/^\/+/, '');
+  const result = db.createRedirect(cleanSlug, target_url, redirect_type || 'proxy', description || '');
+  res.json(result);
 });
 
 router.delete('/redirects/:id', authRequired, (req, res) => {
-  try {
-    db.deleteRedirect(req.params.id);
-    res.json({ success: true, message: 'Rewrite rule deleted' });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+  db.deleteRedirect(parseInt(req.params.id, 10));
+  res.json({ success: true, message: 'URL rewrite rule removed' });
 });
 
 // -------------------------------------------------------------
-// 7. Database Cloud Hub Endpoints
+// 8. Public URL, Remote Tunnels & Dynamic DNS
 // -------------------------------------------------------------
-router.get('/databases', authRequired, async (req, res) => {
-  try {
-    const databases = await databaseManager.getDatabasesWithStatus();
-    res.json({ success: true, databases });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/databases/query', authRequired, async (req, res) => {
-  try {
-    const { dbId, query } = req.body;
-    if (!dbId || !query) return res.status(400).json({ success: false, error: 'Database ID and Query required' });
-    const result = await databaseManager.executeQuery(dbId, query);
-    res.json({ success: true, ...result });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.post('/databases/backup', authRequired, async (req, res) => {
-  try {
-    const { dbId } = req.body;
-    if (!dbId) return res.status(400).json({ success: false, error: 'Database ID required' });
-    const result = await databaseManager.backupDatabaseToStorage(dbId);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// -------------------------------------------------------------
-// 8. Outside Network & Remote Access API (Multi-Provider)
-// -------------------------------------------------------------
-router.get('/network/info', authRequired, async (req, res) => {
-  const publicIp = await tunnel.getPublicIP();
-  res.json({ success: true, publicIp, ...tunnel.getNetworkInfo() });
-});
-
 router.get('/tunnel/status', authRequired, (req, res) => {
   res.json({ success: true, ...tunnel.getTunnelStatus() });
 });
@@ -440,6 +403,12 @@ router.post('/tunnel/stop', authRequired, (req, res) => {
   res.json(result);
 });
 
+router.get('/network/info', authRequired, async (req, res) => {
+  const net = tunnel.getNetworkInfo();
+  const publicIp = await tunnel.getPublicIP();
+  res.json({ success: true, ...net, publicIp });
+});
+
 router.get('/network/ddns', authRequired, (req, res) => {
   const configs = db.getAllDdnsConfigs();
   res.json({ success: true, configs });
@@ -447,68 +416,37 @@ router.get('/network/ddns', authRequired, (req, res) => {
 
 router.post('/network/ddns/sync', authRequired, async (req, res) => {
   const { provider, domain, token, extraConfig } = req.body;
-  if (!provider || !domain) {
-    return res.status(400).json({ success: false, error: 'Provider and domain required' });
-  }
-  const result = await tunnel.updateDynamicDNS(provider, domain, token || '', extraConfig || '');
+  const result = await tunnel.updateDynamicDNS(provider, domain, token, extraConfig);
   res.json(result);
 });
 
 router.delete('/network/ddns/:id', authRequired, (req, res) => {
-  db.deleteDdnsConfig(req.params.id);
-  res.json({ success: true, message: 'DDNS config removed' });
+  db.deleteDdnsConfig(parseInt(req.params.id, 10));
+  res.json({ success: true, message: 'DDNS configuration removed' });
 });
 
 // -------------------------------------------------------------
-// 9. Cloud App Store & Docker API
+// 9. Docker Apps & Containers
 // -------------------------------------------------------------
 router.get('/apps/templates', authRequired, (req, res) => {
-  res.json({
-    success: true,
-    dockerAvailable: docker.isDockerAvailable(),
-    templates: docker.APP_TEMPLATES
-  });
+  res.json({ success: true, templates: APP_TEMPLATES });
 });
 
 router.get('/apps/containers', authRequired, async (req, res) => {
-  const containers = await docker.listAviCloudContainers();
+  const containers = await getDockerContainers();
   res.json({ success: true, containers });
 });
 
 router.post('/apps/deploy', authRequired, async (req, res) => {
-  try {
-    const { templateId, customPort } = req.body;
-    const result = await docker.deployApp(templateId, customPort);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const { templateId, customEnv } = req.body;
+  const result = await deployContainerTemplate(templateId, customEnv);
+  res.json(result);
 });
 
 router.post('/apps/control', authRequired, async (req, res) => {
-  try {
-    const { containerName, action } = req.body;
-    const result = await docker.controlContainer(containerName, action);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.get('/apps/logs/:name', authRequired, async (req, res) => {
-  try {
-    const logs = await docker.getContainerLogs(req.params.name);
-    res.json({ success: true, logs });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// -------------------------------------------------------------
-// 10. System Metrics API
-// -------------------------------------------------------------
-router.get('/system/metrics', authRequired, (req, res) => {
-  res.json({ success: true, metrics: system.getSystemMetrics() });
+  const { containerName, action } = req.body;
+  const result = await controlContainer(containerName, action);
+  res.json(result);
 });
 
 module.exports = router;

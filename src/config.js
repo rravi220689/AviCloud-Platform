@@ -19,6 +19,7 @@ module.exports = {
   ROOT_DIR,
   DATA_DIR,
   STORAGE_DIR,
+  STORAGE_ROOT: STORAGE_DIR,
   DB_PATH: path.join(DATA_DIR, 'avicloud.db'),
   MAX_STORAGE_BYTES: 100 * 1024 * 1024 * 1024, // 100 GB in bytes
   JWT_SECRET: process.env.JWT_SECRET || 'avicloud_super_secret_session_key_2026',

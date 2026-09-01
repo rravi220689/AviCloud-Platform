@@ -97,7 +97,7 @@
 
         <button onclick="switchTab('nfs')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="nfs">
           <i class="fa-solid fa-network-wired w-5 text-center text-teal-400"></i>
-          <span>NFS Network Share</span>
+          <span>Network Drive (SMB/NFS)</span>
         </button>
 
         <button onclick="switchTab('databases')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="databases">
@@ -106,8 +106,8 @@
         </button>
 
         <button onclick="switchTab('domains')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="domains">
-          <i class="fa-solid fa-globe w-5 text-center"></i>
-          <span>Domains & Proxy</span>
+          <i class="fa-solid fa-globe w-5 text-center text-blue-400"></i>
+          <span>Domain Manager & Local IP</span>
         </button>
 
         <button onclick="switchTab('redirects')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="redirects">
@@ -117,7 +117,7 @@
 
         <button onclick="switchTab('network')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="network">
           <i class="fa-solid fa-tower-broadcast w-5 text-center text-purple-400"></i>
-          <span>Free Remote Tunnels</span>
+          <span>Public URL & Tunnels</span>
         </button>
 
         <button onclick="switchTab('apps')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="apps">
@@ -226,28 +226,28 @@
           <!-- Outside Access Card -->
           <div class="glass-card p-6">
             <div class="flex items-center justify-between text-slate-400 mb-3">
-              <span class="text-xs font-bold uppercase tracking-wider">Public Base URL</span>
+              <span class="text-xs font-bold uppercase tracking-wider">Public Outside URL</span>
               <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
                 <i class="fa-solid fa-globe"></i>
               </div>
             </div>
             <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Online</div>
-            <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Custom / Cloudflare</p>
+            <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Connecting...</p>
             <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
               <div id="statTunnelBar" class="h-full bg-purple-400" style="width: 100%"></div>
             </div>
           </div>
 
-          <!-- NFS Share Card -->
+          <!-- Network Storage Share Card -->
           <div class="glass-card p-6">
             <div class="flex items-center justify-between text-slate-400 mb-3">
-              <span class="text-xs font-bold uppercase tracking-wider">NFS Network Share</span>
+              <span class="text-xs font-bold uppercase tracking-wider">Network Drive (SMB/NFS)</span>
               <div class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center">
                 <i class="fa-solid fa-network-wired"></i>
               </div>
             </div>
-            <div class="text-2xl font-extrabold text-white" id="statNfsStatus">Port 2049</div>
-            <p class="text-xs text-teal-400 mt-1">Export: /storage</p>
+            <div class="text-2xl font-extrabold text-white" id="statNfsStatus">Auth Enabled</div>
+            <p class="text-xs text-teal-400 mt-1">User: avinash (Port 445/2049)</p>
             <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
               <div class="h-full bg-teal-400 w-full"></div>
             </div>
@@ -273,8 +273,18 @@
                 <i class="fa-solid fa-network-wired"></i>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white mb-1">NFS Storage Share</h4>
-                <p class="text-xs text-slate-400">Mount drive across Linux, Mac & Windows.</p>
+                <h4 class="text-sm font-bold text-white mb-1">Network Storage</h4>
+                <p class="text-xs text-slate-400">Mount drive with credentials on PC & Mac.</p>
+              </div>
+            </div>
+
+            <div onclick="switchTab('domains')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-globe"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white mb-1">Domain Manager</h4>
+                <p class="text-xs text-slate-400">Map local IPs & custom domain names.</p>
               </div>
             </div>
 
@@ -285,16 +295,6 @@
               <div>
                 <h4 class="text-sm font-bold text-white mb-1">URL Rewriter</h4>
                 <p class="text-xs text-slate-400">Rewrite any outside link to any destination.</p>
-              </div>
-            </div>
-
-            <div onclick="switchTab('network')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl shrink-0">
-                <i class="fa-solid fa-globe"></i>
-              </div>
-              <div>
-                <h4 class="text-sm font-bold text-white mb-1">Custom Public URL</h4>
-                <p class="text-xs text-slate-400">Configure & auto-sync your own domain.</p>
               </div>
             </div>
           </div>
@@ -335,7 +335,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 3: NFS NETWORK SHARE -->
+      <!-- TAB 3: NETWORK STORAGE SHARING (SMB / WEBDAV / NFS WITH CREDENTIALS) -->
       <!-- ========================================================================= -->
       <section id="tab-nfs" class="hidden space-y-6">
         <div class="glass-card p-6 flex items-center justify-between">
@@ -344,67 +344,110 @@
               <i class="fa-solid fa-network-wired"></i>
             </div>
             <div>
-              <h3 class="text-base font-bold text-white">NFS (Network File System) Share</h3>
-              <p class="text-xs text-slate-400">Share your 100 GB Cloud Storage across the local network for Linux, macOS, and Windows.</p>
+              <h3 class="text-base font-bold text-white">Network Storage Share (SMB / WebDAV / NFS)</h3>
+              <p class="text-xs text-slate-400">Access your 100 GB Cloud Storage across the local and outside network with full username & password authentication.</p>
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <span id="nfsStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              NFS ACTIVE (Port 2049)
+            <span id="sambaStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              SMB ACTIVE (Port 445)
             </span>
-            <button onclick="toggleNfsServer()" id="nfsToggleBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition">
-              Restart NFS
-            </button>
           </div>
         </div>
 
-        <!-- Connection Details -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="glass-card p-6">
-            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">Export Path</span>
-            <p class="text-base font-mono font-bold text-cyan-400">/storage</p>
-            <p class="text-xs text-slate-500 mt-1">Host Directory: <code>/home/avinash/cloud-platform/storage_data</code></p>
-          </div>
-          <div class="glass-card p-6">
-            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">NFS Port</span>
-            <p class="text-base font-mono font-bold text-teal-400">2049 (TCP & UDP)</p>
-            <p class="text-xs text-slate-500 mt-1">RPC Port: 111</p>
-          </div>
-          <div class="glass-card p-6">
-            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">Protocol Version</span>
-            <p class="text-base font-mono font-bold text-amber-400">NFSv3 (User-Space daemon)</p>
-            <p class="text-xs text-slate-500 mt-1">Compatible with all OS clients</p>
+        <!-- Credentials Card -->
+        <div class="glass-card p-6 border border-teal-500/30 bg-slate-900/60">
+          <h4 class="text-xs font-bold uppercase text-teal-400 tracking-wider mb-3">Storage Network Credentials</h4>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs font-mono">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Username:</span>
+              <span class="text-cyan-400 font-bold text-sm">avinash</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Password:</span>
+              <span class="text-emerald-400 font-bold text-sm">Avinash@Cloud1989</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Share / Drive Name:</span>
+              <span class="text-amber-400 font-bold text-sm">storage</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Host Local IP:</span>
+              <span class="text-purple-400 font-bold text-sm" id="storageHostIpDisplay">165.101.251.196</span>
+            </div>
           </div>
         </div>
 
-        <!-- Client Mount Commands -->
+        <!-- 1. Samba / SMB Windows & Mac Network Drive -->
         <div class="glass-card p-6 space-y-4">
-          <h4 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-terminal text-teal-400"></i> Client Mount Instructions
-          </h4>
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-brands fa-windows text-blue-400"></i> Windows & macOS Network Drive (Samba / SMB)
+            </h4>
+            <span class="text-xs text-slate-400">Authentication Required</span>
+          </div>
 
           <div>
             <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-              <span><i class="fa-brands fa-linux text-yellow-400 mr-1.5"></i> Linux Client Mount:</span>
+              <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows Map Network Drive Command:</span>
+              <button onclick="copyToClipboard(document.getElementById('smbCmdWin').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="smbCmdWin">net use Z: \\165.101.251.196\storage /user:avinash Avinash@Cloud1989</pre>
+            <p class="text-[11px] text-slate-500 mt-1">Or in Windows File Explorer: <strong>This PC &rarr; Map Network Drive</strong> &rarr; Folder: <code>\\165.101.251.196\storage</code></p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span><i class="fa-brands fa-apple text-slate-200 mr-1.5"></i> macOS Finder (Connect to Server):</span>
+              <button onclick="copyToClipboard(document.getElementById('smbCmdMac').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="smbCmdMac">smb://avinash:Avinash@Cloud1989@165.101.251.196/storage</pre>
+            <p class="text-[11px] text-slate-500 mt-1">In macOS Finder: Press <strong>Cmd + K</strong> &rarr; Paste the URL above &rarr; Click Connect.</p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span><i class="fa-brands fa-linux text-yellow-400 mr-1.5"></i> Linux Mount (CIFS / Samba):</span>
+              <button onclick="copyToClipboard(document.getElementById('smbCmdLinux').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="smbCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t cifs -o username=avinash,password=Avinash@Cloud1989 //165.101.251.196/storage /mnt/avicloud</pre>
+          </div>
+        </div>
+
+        <!-- 2. WebDAV Cloud Drive (Accessible anywhere over Local IP & Internet) -->
+        <div class="glass-card p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-cloud text-cyan-400"></i> WebDAV Network Drive (Accessible via Local IP & Outside Tunnel)
+            </h4>
+            <span class="text-xs text-emerald-400 font-bold">Built-in (HTTP Basic Auth)</span>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span>WebDAV Local & Remote URL:</span>
+              <button onclick="copyToClipboard(document.getElementById('webdavUrlDisplay').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="webdavUrlDisplay">http://165.101.251.196:9000/webdav</pre>
+            <p class="text-[11px] text-slate-500 mt-1">Windows/Mac/Android/iOS can mount this directly using user <code>avinash</code> and password <code>Avinash@Cloud1989</code>.</p>
+          </div>
+        </div>
+
+        <!-- 3. NFS Mount Commands -->
+        <div class="glass-card p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-terminal text-teal-400"></i> Standard NFS Server (Port 2049)
+            </h4>
+            <span class="text-xs text-slate-400">NFSv3 / User-space</span>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span>Linux NFS Mount:</span>
               <button onclick="copyToClipboard(document.getElementById('nfsCmdLinux').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
             </div>
-            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock 127.0.0.1:/storage /mnt/avicloud</pre>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-              <span><i class="fa-brands fa-apple text-slate-200 mr-1.5"></i> macOS Client Mount:</span>
-              <button onclick="copyToClipboard(document.getElementById('nfsCmdMac').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
-            </div>
-            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdMac">sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock 127.0.0.1:/storage /Volumes/AviCloud</pre>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-              <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows Client Mount (Map Network Drive):</span>
-              <button onclick="copyToClipboard(document.getElementById('nfsCmdWin').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
-            </div>
-            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdWin">mount -o anon,nolock \\127.0.0.1\storage Z:</pre>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock 165.101.251.196:/storage /mnt/avicloud</pre>
           </div>
         </div>
       </section>
@@ -427,19 +470,51 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 5: DOMAINS & REVERSE PROXY -->
+      <!-- TAB 5: DOMAIN MANAGER & LOCAL IP ROUTING -->
       <!-- ========================================================================= -->
       <section id="tab-domains" class="hidden space-y-6">
         <div class="glass-card p-6 flex items-center justify-between">
-          <div>
-            <h3 class="text-base font-bold text-white">Domain Names & Dynamic Reverse Proxy</h3>
-            <p class="text-xs text-slate-400 mt-1">Route custom domains and subdomains dynamically to any internal port.</p>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Domain Manager & Local IP Router</h3>
+              <p class="text-xs text-slate-400">Create custom local domains and subdomains using your Local IP (<code>165.101.251.196</code>) and connect directly to internal services.</p>
+            </div>
           </div>
           <button onclick="openAddDomainModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> Create Domain Route
+            <i class="fa-solid fa-plus"></i> Create New Domain Route
           </button>
         </div>
 
+        <!-- Discovered Local Services Helper -->
+        <div class="glass-card p-6">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <i class="fa-solid fa-bolt text-cyan-400"></i> Running Local Services Discovered on Host
+            </h4>
+            <span class="text-xs text-slate-400 font-mono">Host Local IP: <strong class="text-cyan-400" id="discoveredLocalIpDisplay">165.101.251.196</strong></span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="discoveredServicesGrid"></div>
+        </div>
+
+        <!-- Local DNS / Hosts File Snippet Helper -->
+        <div class="glass-card p-6 space-y-3 bg-slate-900/50">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-terminal text-blue-400"></i> Client Hosts File Helper (Connect Any Device by Domain Name)
+            </h4>
+            <button onclick="copyToClipboard(document.getElementById('hostsFileSnippet').innerText)" class="text-cyan-400 hover:text-cyan-300 text-xs font-semibold">
+              <i class="fa-solid fa-copy mr-1"></i> Copy Hosts Line
+            </button>
+          </div>
+          <p class="text-xs text-slate-400">To access your configured custom domain names from any PC or laptop on your network, add this line to your <code>/etc/hosts</code> (Linux/Mac) or <code>C:\Windows\System32\drivers\etc\hosts</code> (Windows):</p>
+          <pre class="bg-slate-950 p-3 rounded-xl text-xs font-mono text-emerald-400 border border-slate-800 select-all" id="hostsFileSnippet">165.101.251.196 notes.local notekeeper.local storage.local app.local</pre>
+        </div>
+
+        <!-- Configured Domains Table -->
         <div class="glass-card overflow-hidden">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
@@ -815,6 +890,54 @@
     </div>
   </div>
 
+  <!-- Create Domain Modal with Discovered Services Autofill -->
+  <div id="addDomainModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
+    <div class="glass-card max-w-lg w-full p-6 relative">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base font-bold text-white">Create Domain Name Route</h3>
+          <p class="text-xs text-slate-400">Map custom local domains or public hostnames to internal services.</p>
+        </div>
+        <button onclick="closeAddDomainModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="addDomainForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Quick-Select Running Local Service</label>
+          <select id="domainServicePreset" onchange="applyServicePreset(this.value)" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-cyan-400 text-xs focus:outline-none focus:border-cyan-500">
+            <option value="">-- Choose a discovered running local service --</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Domain Name (e.g. <code>notes.local</code>, <code>notekeeper.local</code>, <code>storage.local</code>, <code>cloud.yourdomain.com</code>)</label>
+          <input type="text" id="newDomainName" required placeholder="e.g. notekeeper.local or 165.101.251.196" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Internal Service URL</label>
+          <div class="flex gap-2">
+            <input type="text" id="newTargetUrl" required placeholder="http://127.0.0.1:4004" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+            <button type="button" onclick="testTargetUrlDirect(document.getElementById('newTargetUrl').value)" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-semibold rounded-xl border border-slate-700 shrink-0">
+              <i class="fa-solid fa-bolt mr-1"></i> Test
+            </button>
+          </div>
+          <span id="domainTestFeedback" class="text-[11px] mt-1 block hidden"></span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Description</label>
+          <input type="text" id="newDomainDesc" placeholder="e.g. NoteKeeper Web App on local network" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" onclick="closeAddDomainModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Domain Route</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- SQL Query Runner Modal -->
   <div id="queryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
     <div class="glass-card max-w-3xl w-full p-6 relative max-h-[90vh] flex flex-col">
@@ -920,38 +1043,6 @@
         <button onclick="closeShareModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Close</button>
         <button onclick="submitShareCreation()" id="createShareBtn" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Generate Link</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Create Domain Modal -->
-  <div id="addDomainModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
-    <div class="glass-card max-w-md w-full p-6 relative">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-bold text-white">Create Domain Name Route</h3>
-        <button onclick="closeAddDomainModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-
-      <form id="addDomainForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Domain Name</label>
-          <input type="text" id="newDomainName" required placeholder="e.g. drive.avivault.duckdns.org" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Internal URL</label>
-          <input type="text" id="newTargetUrl" required placeholder="http://127.0.0.1:9000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Description</label>
-          <input type="text" id="newDomainDesc" placeholder="e.g. Cloud Storage Portal" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
-        </div>
-
-        <div class="flex justify-end gap-3 mt-6">
-          <button type="button" onclick="closeAddDomainModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
-          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Domain</button>
-        </div>
-      </form>
     </div>
   </div>
 

@@ -224,6 +224,7 @@ async function backupDatabaseToStorage(dbId) {
 
 module.exports = {
   getDatabasesWithStatus,
+  getAllDatabasesWithStatus: getDatabasesWithStatus,
   executeQuery,
   backupDatabaseToStorage
 };
