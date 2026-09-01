@@ -251,6 +251,12 @@ async function loadStorageShares() {
     }
 
     if (data.webdav) {
+      const localhostEl = document.getElementById('webdavUrlLocalhost');
+      if (localhostEl) localhostEl.innerText = data.webdav.localhostUrl || 'http://localhost:9000/webdav';
+
+      const duckDnsEl = document.getElementById('webdavUrlDuckDns');
+      if (duckDnsEl) duckDnsEl.innerText = data.webdav.duckDnsUrl || 'https://cloud.avivault.duckdns.org/webdav';
+
       const winOutsideEl = document.getElementById('webdavCmdWinOutside');
       if (winOutsideEl && data.webdav.mountCommands && data.webdav.mountCommands.windowsOutside) {
         winOutsideEl.innerText = data.webdav.mountCommands.windowsOutside;
@@ -259,12 +265,15 @@ async function loadStorageShares() {
       if (winLocalEl && data.webdav.mountCommands && data.webdav.mountCommands.windowsLocal) {
         winLocalEl.innerText = data.webdav.mountCommands.windowsLocal;
       }
-      const urlDisplay = document.getElementById('webdavUrlDisplay');
-      if (urlDisplay) urlDisplay.innerText = data.webdav.outsideUrl || data.webdav.url;
     }
 
-    if (data.nfs.mountCommands) {
-      document.getElementById('nfsCmdLinux').innerText = data.nfs.mountCommands.linux;
+    if (data.nfs && data.nfs.mountCommands) {
+      const nfsLinuxEl = document.getElementById('nfsCmdLinux');
+      if (nfsLinuxEl) nfsLinuxEl.innerText = data.nfs.mountCommands.linux;
+      const nfsMacEl = document.getElementById('nfsCmdMac');
+      if (nfsMacEl) nfsMacEl.innerText = data.nfs.mountCommands.macos;
+      const nfsWinEl = document.getElementById('nfsCmdWin');
+      if (nfsWinEl) nfsWinEl.innerText = data.nfs.mountCommands.windows;
     }
   } catch (err) {
     console.error('Error loading storage shares:', err);

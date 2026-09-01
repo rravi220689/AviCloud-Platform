@@ -121,15 +121,21 @@ function getStorageShareStatus() {
       }
     },
     webdav: {
-      url: `http://${localIp}:${config.PORT}/webdav`,
+      localhostUrl: `http://localhost:${config.PORT}/webdav`,
+      loopbackUrl: `http://127.0.0.1:${config.PORT}/webdav`,
+      localIpUrl: `http://${localIp}:${config.PORT}/webdav`,
+      duckDnsUrl: 'https://cloud.avivault.duckdns.org/webdav',
       outsideUrl: db.getSetting('active_tunnel_url') ? `${db.getSetting('active_tunnel_url')}/webdav` : null,
       username: 'avinash',
       password: 'Avinash@Cloud1989',
       mountCommands: {
+        localhost: `net use Z: http://localhost:${config.PORT}/webdav /user:avinash Avinash@Cloud1989`,
+        loopback: `net use Z: http://127.0.0.1:${config.PORT}/webdav /user:avinash Avinash@Cloud1989`,
         windowsLocal: `net use Z: http://${localIp}:${config.PORT}/webdav /user:avinash Avinash@Cloud1989`,
+        windowsDuckDns: 'net use Z: https://cloud.avivault.duckdns.org/webdav /user:avinash Avinash@Cloud1989',
         windowsOutside: db.getSetting('active_tunnel_url') ? `net use Z: ${db.getSetting('active_tunnel_url')}/webdav /user:avinash Avinash@Cloud1989` : null,
-        macos: `http://${localIp}:${config.PORT}/webdav`,
-        linux: `sudo mount -t davfs http://${localIp}:${config.PORT}/webdav /mnt/avicloud`
+        macosLocal: `http://localhost:${config.PORT}/webdav`,
+        linuxLocal: `sudo mount -t davfs http://localhost:${config.PORT}/webdav /mnt/avicloud`
       }
     },
     nfs: {

@@ -414,39 +414,58 @@
           </div>
         </div>
 
-        <!-- 2. WebDAV Cloud Drive (Accessible anywhere over Local IP & Internet) -->
+        <!-- 2. WebDAV Cloud Drive (Localhost, Local IP, DuckDNS & Outside) -->
         <div class="glass-card p-6 space-y-4 border border-cyan-500/20">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <i class="fa-solid fa-cloud text-cyan-400"></i> WebDAV Cloud Drive (Works from Windows, Mac, Phone, or Outside Network)
+              <i class="fa-solid fa-cloud text-cyan-400"></i> WebDAV Cloud Drive (Localhost, Local Network, DuckDNS & Internet)
             </h4>
             <span class="text-xs text-emerald-400 font-bold">100% Firewall-Proof</span>
           </div>
 
-          <div class="space-y-3">
-            <div>
-              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-                <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows 1-Click Mount (Over Public Internet / HTTPS):</span>
-                <button onclick="copyToClipboard(document.getElementById('webdavCmdWinOutside').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+          <div class="space-y-4">
+            <!-- 1. Localhost WebDAV URL -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-cyan-500/30">
+              <div class="flex items-center justify-between text-xs text-cyan-400 font-semibold mb-1">
+                <span><i class="fa-solid fa-laptop mr-1.5"></i> Localhost WebDAV URL (Local Machine Mount):</span>
+                <button onclick="copyToClipboard(document.getElementById('webdavUrlLocalhost').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy URL</button>
               </div>
-              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-cyan-300 border border-slate-800" id="webdavCmdWinOutside">net use Z: https://java-proceeding-finger-collar.trycloudflare.com/webdav /user:avinash Avinash@Cloud1989</pre>
-              <p class="text-[11px] text-slate-400 mt-1">If prompted on Windows, make sure the WebClient service is running by running: <code>net start webclient</code></p>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-cyan-300 border border-slate-800" id="webdavUrlLocalhost">http://localhost:9000/webdav</pre>
+              <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Windows Command: <code>net use Z: http://localhost:9000/webdav /user:avinash Avinash@Cloud1989</code></span>
+                <button onclick="copyToClipboard('net use Z: http://localhost:9000/webdav /user:avinash Avinash@Cloud1989')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-copy mr-1"></i> Copy Cmd</button>
+              </div>
             </div>
 
-            <div>
-              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-                <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows Local Network Mount:</span>
-                <button onclick="copyToClipboard(document.getElementById('webdavCmdWinLocal').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            <!-- 2. DuckDNS WebDAV URL -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30">
+              <div class="flex items-center justify-between text-xs text-amber-400 font-semibold mb-1">
+                <span><i class="fa-solid fa-feather mr-1.5"></i> DuckDNS WebDAV URL (Permanent HTTPS):</span>
+                <button onclick="copyToClipboard(document.getElementById('webdavUrlDuckDns').innerText)" class="text-amber-400 hover:text-amber-300"><i class="fa-solid fa-copy mr-1"></i> Copy URL</button>
               </div>
-              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="webdavCmdWinLocal">net use Z: http://165.101.251.196:9000/webdav /user:avinash Avinash@Cloud1989</pre>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-amber-300 border border-slate-800" id="webdavUrlDuckDns">https://cloud.avivault.duckdns.org/webdav</pre>
+              <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Windows Command: <code>net use Z: https://cloud.avivault.duckdns.org/webdav /user:avinash Avinash@Cloud1989</code></span>
+                <button onclick="copyToClipboard('net use Z: https://cloud.avivault.duckdns.org/webdav /user:avinash Avinash@Cloud1989')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-copy mr-1"></i> Copy Cmd</button>
+              </div>
             </div>
 
-            <div>
-              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-                <span>WebDAV Direct URL:</span>
-                <button onclick="copyToClipboard(document.getElementById('webdavUrlDisplay').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            <!-- 3. Outside Tunnel WebDAV URL -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-purple-500/30">
+              <div class="flex items-center justify-between text-xs text-purple-400 font-semibold mb-1">
+                <span><i class="fa-solid fa-globe mr-1.5"></i> Outside Tunnel WebDAV URL (Instant Public):</span>
+                <button onclick="copyToClipboard(document.getElementById('webdavCmdWinOutside').innerText)" class="text-purple-400 hover:text-purple-300"><i class="fa-solid fa-copy mr-1"></i> Copy Cmd</button>
               </div>
-              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-emerald-300 border border-slate-800" id="webdavUrlDisplay">http://165.101.251.196:9000/webdav</pre>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-purple-300 border border-slate-800" id="webdavCmdWinOutside">net use Z: https://phentermine-therapist-oils-fur.trycloudflare.com/webdav /user:avinash Avinash@Cloud1989</pre>
+            </div>
+
+            <!-- 4. Local IP WebDAV URL -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span><i class="fa-solid fa-wifi mr-1.5"></i> LAN Local IP WebDAV URL:</span>
+                <button onclick="copyToClipboard(document.getElementById('webdavCmdWinLocal').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy Cmd</button>
+              </div>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-slate-200 border border-slate-800" id="webdavCmdWinLocal">net use Z: http://165.101.251.196:9000/webdav /user:avinash Avinash@Cloud1989</pre>
             </div>
           </div>
         </div>
