@@ -35,8 +35,7 @@ function startSamba(username = 'avinash', password = 'Avinash@Cloud1989') {
       execSync(`docker rm -f ${SAMBA_CONTAINER} 2>/dev/null`);
     } catch (_) {}
 
-    const cmd = `docker run -d --name ${SAMBA_CONTAINER} --restart unless-stopped ` +
-      `-p 139:139 -p 445:445 ` +
+    const cmd = `docker run -d --name ${SAMBA_CONTAINER} --net=host --restart unless-stopped ` +
       `-e SMB_USER="${username}" ` +
       `-e SMB_PASS="${password}" ` +
       `-v "${config.STORAGE_ROOT}:/storage" ` +
