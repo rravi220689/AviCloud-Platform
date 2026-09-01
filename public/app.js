@@ -21,6 +21,7 @@ function initWebSocket() {
       const data = JSON.parse(event.data);
       if (data.type === 'telemetry') {
         if (data.tunnel) {
+          if (data.tunnel.url) currentTunnelUrl = data.tunnel.url;
           if (data.tunnel.effectiveUrl && data.tunnel.effectiveUrl !== currentEffectiveUrl) {
             currentEffectiveUrl = data.tunnel.effectiveUrl;
             if (activeTab === 'redirects') loadRedirects();
@@ -174,7 +175,10 @@ function updateTelemetryUI(metrics, tunnel) {
     currentEffectiveUrl = tunnel.effectiveUrl || tunnel.url || window.location.origin;
 
     document.getElementById('statTunnelStatus').innerText = isRunning ? 'Online (24/7)' : 'Starting...';
-    document.getElementById('statTunnelUrl').innerText = currentEffectiveUrl.replace(/^https?:\/\//, '');
+    
+    // Always show the live working outside link
+    const displayUrl = tunnel.url || currentEffectiveUrl;
+    document.getElementById('statTunnelUrl').innerText = displayUrl.replace(/^https?:\/\//, '');
 
     const effDisplay = document.getElementById('currentEffectiveUrlDisplay');
     if (effDisplay) effDisplay.innerText = currentEffectiveUrl;
@@ -183,10 +187,10 @@ function updateTelemetryUI(metrics, tunnel) {
     if (cnameTargetEl) cnameTargetEl.innerText = tunnel.cnameTarget || 'Initializing...';
 
     const badge = document.getElementById('topTunnelBadge');
-    if (isRunning && currentEffectiveUrl) {
+    if (isRunning && tunnel.url) {
       badge.classList.remove('hidden');
       badge.classList.add('flex');
-      badge.innerHTML = `<a href="${currentEffectiveUrl}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-[10px]"></i> Outside: ${currentEffectiveUrl.replace(/^https?:\/\//, '')}</a>`;
+      badge.innerHTML = `<a href="${tunnel.url}" target="_blank" class="hover:underline flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Live Outside URL: ${tunnel.url.replace('https://', '')}</a>`;
     } else {
       badge.classList.add('hidden');
       badge.classList.remove('flex');
@@ -513,12 +517,12 @@ async function loadRedirects() {
       return;
     }
 
-    const base = currentEffectiveUrl || window.location.origin;
+    const liveTunnelBase = currentTunnelUrl || currentEffectiveUrl || window.location.origin;
 
     tbody.innerHTML = data.redirects.map(r => {
       const cleanSlug = r.slug.replace(/^\/+/, '');
       const localUrl = `${window.location.origin}/${cleanSlug}`;
-      const outsideUrl = `${base}/${cleanSlug}`;
+      const outsideUrl = `${liveTunnelBase}/${cleanSlug}`;
 
       return `
         <tr class="hover:bg-slate-900/40 transition">
@@ -526,7 +530,7 @@ async function loadRedirects() {
             <span class="font-bold text-amber-400">/${cleanSlug}</span>
             <div class="text-[10px] text-cyan-400 mt-1 flex items-center gap-1.5 truncate max-w-xs">
               <i class="fa-solid fa-globe text-[9px]"></i>
-              <a href="${outsideUrl}" target="_blank" class="hover:underline truncate" title="Outside URL">${outsideUrl}</a>
+              <a href="${outsideUrl}" target="_blank" class="hover:underline truncate" title="Live Outside HTTPS Link">${outsideUrl}</a>
             </div>
           </td>
           <td class="p-4 font-mono text-slate-300 truncate max-w-xs" title="${r.target_url}">
@@ -541,6 +545,7 @@ async function loadRedirects() {
           <td class="p-4 text-slate-400 text-xs">${r.description || '--'}</td>
           <td class="p-4 text-right">
             <div class="flex items-center justify-end gap-2">
+              <a href="${outsideUrl}" target="_blank" class="p-1.5 text-emerald-400 hover:text-emerald-300" title="Open Link"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
               <button onclick="copyToClipboard('${outsideUrl}')" class="p-1.5 text-cyan-400 hover:text-cyan-300" title="Copy Outside Public URL"><i class="fa-solid fa-link"></i></button>
               <button onclick="deleteRedirect(${r.id})" class="p-1.5 text-slate-500 hover:text-rose-400" title="Delete Rule"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -987,7 +992,7 @@ async function submitShareCreation() {
     });
     const data = await res.json();
     if (data.success) {
-      const base = currentEffectiveUrl || window.location.origin;
+      const base = currentTunnelUrl || currentEffectiveUrl || window.location.origin;
       const fullShareUrl = `${base}${data.shareUrl}`;
       document.getElementById('generatedShareUrl').value = fullShareUrl;
       document.getElementById('generatedShareUrlBox').classList.remove('hidden');
@@ -1017,13 +1022,13 @@ async function loadDomains() {
       return;
     }
 
-    const base = currentEffectiveUrl || window.location.origin;
+    const base = currentTunnelUrl || currentEffectiveUrl || window.location.origin;
 
     tbody.innerHTML = data.domains.map(d => `
       <tr class="hover:bg-slate-900/40 transition">
         <td class="p-4 font-mono">
           <span class="font-bold text-cyan-400">${d.domain_name}</span>
-          ${base ? `<div class="text-[10px] text-purple-400 mt-0.5 truncate">Outside Alias: <a href="${base}" target="_blank" class="underline">${base}</a></div>` : ''}
+          ${base ? `<div class="text-[10px] text-purple-400 mt-0.5 truncate">Live Outside URL: <a href="${base}" target="_blank" class="underline">${base}</a></div>` : ''}
         </td>
         <td class="p-4 font-mono text-slate-300">${d.target_url}</td>
         <td class="p-4">
@@ -1365,7 +1370,7 @@ async function loadShares() {
       return;
     }
 
-    const base = currentEffectiveUrl || window.location.origin;
+    const base = currentTunnelUrl || currentEffectiveUrl || window.location.origin;
 
     tbody.innerHTML = data.shares.map(s => {
       const fullUrl = `${base}/s/${s.token}`;
