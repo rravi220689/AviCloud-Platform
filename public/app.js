@@ -251,7 +251,16 @@ async function loadStorageShares() {
     }
 
     if (data.webdav) {
-      document.getElementById('webdavUrlDisplay').innerText = data.webdav.url;
+      const winOutsideEl = document.getElementById('webdavCmdWinOutside');
+      if (winOutsideEl && data.webdav.mountCommands && data.webdav.mountCommands.windowsOutside) {
+        winOutsideEl.innerText = data.webdav.mountCommands.windowsOutside;
+      }
+      const winLocalEl = document.getElementById('webdavCmdWinLocal');
+      if (winLocalEl && data.webdav.mountCommands && data.webdav.mountCommands.windowsLocal) {
+        winLocalEl.innerText = data.webdav.mountCommands.windowsLocal;
+      }
+      const urlDisplay = document.getElementById('webdavUrlDisplay');
+      if (urlDisplay) urlDisplay.innerText = data.webdav.outsideUrl || data.webdav.url;
     }
 
     if (data.nfs.mountCommands) {
