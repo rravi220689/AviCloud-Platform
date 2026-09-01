@@ -138,6 +138,43 @@ function handleWebDAV(req, res) {
     }
   }
 
+  if (method === 'PROPPATCH') {
+    res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+    return res.status(207).send(`<?xml version="1.0" encoding="utf-8" ?><D:multistatus xmlns:D="DAV:"><D:response><D:href>${req.path}</D:href><D:propstat><D:prop/><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>`);
+  }
+
+  if (method === 'LOCK') {
+    const lockToken = 'urn:uuid:' + Math.random().toString(36).substring(2) + '-' + Date.now();
+    res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+    res.setHeader('Lock-Token', `<${lockToken}>`);
+    return res.status(200).send(`<?xml version="1.0" encoding="utf-8" ?><D:prop xmlns:D="DAV:"><D:lockdiscovery><D:activelock><D:locktype><D:write/></D:locktype><D:lockscope><D:exclusive/></D:lockscope><D:depth>Infinity</D:depth><D:owner><D:href>avinash</D:href></D:owner><D:timeout>Second-3600</D:timeout><D:locktoken><D:href>${lockToken}</D:href></D:locktoken><D:lockroot><D:href>${req.path}</D:href></D:lockroot></D:activelock></D:lockdiscovery></D:prop>`);
+  }
+
+  if (method === 'UNLOCK') {
+    return res.status(204).end();
+  }
+
+  if (method === 'COPY' || method === 'MOVE') {
+    const destHeader = req.headers.destination;
+    if (!destHeader) return res.status(400).send('Destination header missing');
+    try {
+      const destUrl = new URL(destHeader, `http://${req.headers.host}`);
+      const destRelPath = decodeURIComponent(destUrl.pathname.replace(/^\/webdav/, '') || '/');
+      const destTargetPath = path.join(config.STORAGE_ROOT, destRelPath);
+      const parent = path.dirname(destTargetPath);
+      if (!fs.existsSync(parent)) fs.mkdirSync(parent, { recursive: true });
+
+      if (method === 'MOVE') {
+        fs.renameSync(targetPath, destTargetPath);
+      } else {
+        fs.cpSync(targetPath, destTargetPath, { recursive: true });
+      }
+      return res.status(201).end();
+    } catch (err) {
+      return res.status(500).send(err.message);
+    }
+  }
+
   res.status(405).send('Method Not Allowed');
 }
 
