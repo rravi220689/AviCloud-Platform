@@ -451,21 +451,40 @@
           </div>
         </div>
 
-        <!-- 3. NFS Mount Commands -->
-        <div class="glass-card p-6 space-y-4">
+        <!-- 3. NFS Mount Commands (Port 2049) -->
+        <div class="glass-card p-6 space-y-4 border border-teal-500/20">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <i class="fa-solid fa-terminal text-teal-400"></i> Standard NFS Server (Port 2049)
+              <i class="fa-solid fa-terminal text-teal-400"></i> Standard NFS Server (Port 2049) - Linux / Mac / Windows
             </h4>
-            <span class="text-xs text-slate-400">NFSv3 / User-space</span>
+            <span class="text-xs text-emerald-400 font-bold">NFSv3 Active</span>
           </div>
 
-          <div>
-            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
-              <span>Linux NFS Mount:</span>
-              <button onclick="copyToClipboard(document.getElementById('nfsCmdLinux').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+          <div class="space-y-3">
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span><i class="fa-brands fa-linux text-yellow-400 mr-1.5"></i> Linux NFS Mount (via DuckDNS or Local IP):</span>
+                <button onclick="copyToClipboard(document.getElementById('nfsCmdLinux').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+              </div>
+              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock avivault.duckdns.org:/storage /mnt/avicloud</pre>
             </div>
-            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock 165.101.251.196:/storage /mnt/avicloud</pre>
+
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span><i class="fa-brands fa-apple text-slate-200 mr-1.5"></i> macOS NFS Mount:</span>
+                <button onclick="copyToClipboard(document.getElementById('nfsCmdMac').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+              </div>
+              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdMac">sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock avivault.duckdns.org:/storage /Volumes/AviCloud</pre>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows NFS Mount (Command Prompt):</span>
+                <button onclick="copyToClipboard(document.getElementById('nfsCmdWin').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+              </div>
+              <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdWin">mount -o anon,nolock \\avivault.duckdns.org\storage Z:</pre>
+              <p class="text-[11px] text-slate-500 mt-1">Requires Windows NFS Client feature enabled in Windows Features.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -516,6 +535,45 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="discoveredServicesGrid"></div>
+        </div>
+
+        <!-- DuckDNS Quick Subdomain & SSL Creator Card -->
+        <div class="glass-card p-6 border border-amber-500/30 bg-slate-900/60 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-base">
+                <i class="fa-solid fa-feather"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white">DuckDNS Subdomain Creator (<code>*.avivault.duckdns.org</code>)</h4>
+                <p class="text-xs text-slate-400">Quickly attach any new subdomain with SSL encryption to any local container or port.</p>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+              avivault.duckdns.org
+            </span>
+          </div>
+
+          <form id="quickDuckDnsForm" onsubmit="handleQuickDuckDnsSubmit(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div class="sm:col-span-5">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">New Subdomain Name</label>
+              <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-2">
+                <input type="text" id="duckSubdomainPrefix" placeholder="e.g. photos, storage, api" required class="bg-transparent text-xs text-white focus:outline-none w-full font-mono">
+                <span class="text-xs text-amber-400 font-mono shrink-0">.avivault.duckdns.org</span>
+              </div>
+            </div>
+
+            <div class="sm:col-span-5">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Target Service / URL</label>
+              <input type="text" id="duckSubdomainTarget" placeholder="e.g. http://127.0.0.1:4004 or select discovered above" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono">
+            </div>
+
+            <div class="sm:col-span-2">
+              <button type="submit" class="w-full px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+                <i class="fa-solid fa-plus"></i> Create Route
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Local DNS / Hosts File Snippet Helper -->
@@ -702,6 +760,100 @@
           </div>
         </div>
 
+        <!-- Dedicated System DuckDNS Manager Card -->
+        <div class="glass-card p-6 border border-amber-500/40 bg-slate-900/80 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-800">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-feather"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  DuckDNS Native System Integration
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+                </h3>
+                <p class="text-xs text-slate-400">Configured DuckDNS domain with automatic background syncing and SSL certificate encryption.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="syncDuckDnsDirect()" id="syncDuckDnsBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow">
+                <i class="fa-solid fa-arrows-rotate"></i> Sync DuckDNS Now
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Primary Domain:</span>
+              <a href="https://avivault.duckdns.org" target="_blank" class="text-amber-400 font-bold hover:underline text-sm">avivault.duckdns.org</a>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Configured Token:</span>
+              <span class="text-slate-300 font-bold">704e7d65-••••-••••-••••-••••••••faa6</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase text-slate-500 block">Auto-Sync Cronjob:</span>
+              <span class="text-emerald-400 font-bold">Every 5 Minutes (Active)</span>
+            </div>
+          </div>
+
+          <!-- Active DuckDNS Subdomains List -->
+          <div>
+            <h5 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Live Configured DuckDNS Subdomains</h5>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              <a href="https://cloud.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-cyan-400 font-bold block">AviCloud & Storage</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">cloud.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-cyan-400"></i>
+              </a>
+              <a href="https://notekeeper.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-purple-400 font-bold block">NoteKeeper App</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">notekeeper.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-purple-400"></i>
+              </a>
+              <a href="https://personalnotes.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-blue-400 font-bold block">PersonalNotes</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">personalnotes.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-blue-400"></i>
+              </a>
+              <a href="https://khatabook.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-emerald-400 font-bold block">Khatabook App</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">khatabook.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-emerald-400"></i>
+              </a>
+              <a href="https://jenkins.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-rose-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-rose-400 font-bold block">Jenkins CI/CD</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">jenkins.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-rose-400"></i>
+              </a>
+              <a href="https://ip.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-amber-400 font-bold block">IP Notifier</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">ip.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-amber-400"></i>
+              </a>
+              <a href="https://panel.avivault.duckdns.org" target="_blank" class="p-3 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-teal-500/50 rounded-xl transition flex items-center justify-between group">
+                <div>
+                  <span class="text-[10px] text-teal-400 font-bold block">LocalDeploy Panel</span>
+                  <span class="text-xs font-mono text-slate-300 group-hover:text-white">panel.avivault.duckdns.org</span>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-500 group-hover:text-teal-400"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
         <!-- Multi-Provider Dynamic DNS Sync -->
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
@@ -710,7 +862,7 @@
                 <i class="fa-solid fa-arrows-rotate"></i>
               </div>
               <div>
-                <h3 class="text-base font-bold text-white">Free Dynamic DNS & Webhook Sync</h3>
+                <h3 class="text-base font-bold text-white">Additional Free Dynamic DNS & Webhook Sync</h3>
                 <p class="text-xs text-slate-400">Sync your public IP and live tunnel with Cloudflare DNS, FreeDNS, No-IP, Dynu, or Custom Webhooks.</p>
               </div>
             </div>

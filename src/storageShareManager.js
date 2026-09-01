@@ -136,10 +136,12 @@ function getStorageShareStatus() {
       isRunning: nfsRunning,
       port: 2049,
       exportPath: '/storage',
+      duckDnsHost: 'avivault.duckdns.org',
       mountCommands: {
-        linux: `sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock ${localIp}:/storage /mnt/avicloud`,
-        macos: `sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock ${localIp}:/storage /Volumes/AviCloud`,
-        windows: `mount -o anon,nolock \\\\${localIp}\\storage Z:`
+        linux: `sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock avivault.duckdns.org:/storage /mnt/avicloud`,
+        linuxLocal: `sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock ${localIp}:/storage /mnt/avicloud`,
+        macos: `sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock avivault.duckdns.org:/storage /Volumes/AviCloud`,
+        windows: `mount -o anon,nolock \\\\avivault.duckdns.org\\storage Z:`
       }
     }
   };

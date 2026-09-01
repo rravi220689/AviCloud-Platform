@@ -321,6 +321,15 @@ async function loadDiscoveredServices() {
 function quickCreateDomainForService(idx) {
   const s = discoveredServicesList[idx];
   if (!s) return;
+
+  const duckPrefixEl = document.getElementById('duckSubdomainPrefix');
+  const duckTargetEl = document.getElementById('duckSubdomainTarget');
+  if (duckPrefixEl && duckTargetEl) {
+    const slug = (s.slug || s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+    duckPrefixEl.value = slug;
+    duckTargetEl.value = s.url;
+  }
+
   openAddDomainModal();
   applyServicePreset(idx);
 }
@@ -329,11 +338,84 @@ function applyServicePreset(idx) {
   const s = discoveredServicesList[idx];
   if (!s) return;
 
-  const slug = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = s.slug || s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   document.getElementById('newDomainName').value = `${slug}.local`;
   document.getElementById('newTargetUrl').value = s.url;
   document.getElementById('newDomainDesc').value = `Local domain mapping for ${s.name}`;
   testTargetUrlDirect(s.url);
+}
+
+async function handleQuickDuckDnsSubmit(e) {
+  e.preventDefault();
+  const prefix = document.getElementById('duckSubdomainPrefix').value.trim().toLowerCase();
+  const target = document.getElementById('duckSubdomainTarget').value.trim();
+  if (!prefix || !target) return;
+
+  const fullDomain = `${prefix}.avivault.duckdns.org`;
+
+  try {
+    const res = await fetch('/api/domains', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        domain_name: fullDomain,
+        target_url: target,
+        ssl_mode: 'ssl',
+        description: `DuckDNS Subdomain (${prefix})`,
+        createOutsideRewrite: true
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('duckSubdomainPrefix').value = '';
+      document.getElementById('duckSubdomainTarget').value = '';
+      loadDomains();
+      alert(`🎉 Subdomain ${fullDomain} created successfully! Accessible immediately over HTTPS.`);
+    } else {
+      alert(`Error: ${data.error}`);
+    }
+  } catch (err) {
+    alert(`Failed to create domain: ${err.message}`);
+  }
+}
+
+async function syncDuckDnsDirect() {
+  const btn = document.getElementById('syncDuckDnsBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Syncing...';
+  }
+
+  try {
+    const res = await fetch('/api/network/ddns/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        provider: 'duckdns',
+        domain: 'avivault.duckdns.org',
+        token: '704e7d65-53a3-492f-a659-49afbfeefaa6'
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(`✅ DuckDNS Synced Successfully! IP ${data.currentIp} registered with avivault.duckdns.org`);
+    } else {
+      alert(`DuckDNS Sync: ${data.error || 'Failed'}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Sync DuckDNS Now';
+    }
+  }
 }
 
 async function testTargetUrlDirect(targetUrl) {
