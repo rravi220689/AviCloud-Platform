@@ -35,7 +35,7 @@ function initDatabase() {
     );
   `);
 
-  // URL Redirect & Custom Forwarding Rules Table
+  // URL Rewriting & Redirection Rules Table
   db.exec(`
     CREATE TABLE IF NOT EXISTS url_redirects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,20 +75,6 @@ function initDatabase() {
       expires_at DATETIME,
       downloads_count INTEGER DEFAULT 0,
       max_downloads INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // Tunnels Table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS tunnels (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      tunnel_type TEXT NOT NULL,
-      hostname TEXT,
-      target_port INTEGER DEFAULT 9000,
-      public_url TEXT,
-      status TEXT DEFAULT 'stopped',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -166,20 +152,45 @@ function incrementDomainHits(domainName) {
   return db.prepare('UPDATE domains SET hits = hits + 1 WHERE LOWER(domain_name) = LOWER(?)').run(domainName);
 }
 
-// URL Redirect Helpers
+// URL Rewrite & Redirection Helpers
 function getAllRedirects() {
   return db.prepare('SELECT * FROM url_redirects ORDER BY id DESC').all();
 }
 
 function getRedirectBySlug(slug) {
-  return db.prepare('SELECT * FROM url_redirects WHERE LOWER(slug) = LOWER(?)').get(slug);
+  // Normalize slug: strip leading slashes and trailing slashes
+  const cleanSlug = slug.replace(/^\/+|\/+$/g, '').toLowerCase();
+  return db.prepare('SELECT * FROM url_redirects WHERE LOWER(slug) = ? OR LOWER(slug) = ?').get(cleanSlug, '/' + cleanSlug);
+}
+
+function findMatchingRewrite(requestPath) {
+  const cleanPath = requestPath.replace(/^\/+|\/+$/g, '').toLowerCase();
+  const allRules = getAllRedirects();
+
+  // 1. Exact match
+  for (const rule of allRules) {
+    const ruleSlug = rule.slug.replace(/^\/+|\/+$/g, '').toLowerCase();
+    if (ruleSlug === cleanPath) return { rule, remainingPath: '' };
+  }
+
+  // 2. Prefix match (e.g. slug is "app" and request is "app/subpath")
+  for (const rule of allRules) {
+    const ruleSlug = rule.slug.replace(/^\/+|\/+$/g, '').toLowerCase();
+    if (cleanPath.startsWith(ruleSlug + '/')) {
+      const remainingPath = cleanPath.slice(ruleSlug.length);
+      return { rule, remainingPath };
+    }
+  }
+
+  return null;
 }
 
 function addRedirect(slug, targetUrl, redirectType = '302', description = '') {
+  const cleanSlug = slug.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
   return db.prepare(`
     INSERT INTO url_redirects (slug, target_url, redirect_type, description)
     VALUES (?, ?, ?, ?)
-  `).run(slug.toLowerCase().trim(), targetUrl.trim(), redirectType, description);
+  `).run(cleanSlug, targetUrl.trim(), redirectType, description);
 }
 
 function deleteRedirect(id) {
@@ -187,7 +198,8 @@ function deleteRedirect(id) {
 }
 
 function incrementRedirectHits(slug) {
-  return db.prepare('UPDATE url_redirects SET hits = hits + 1 WHERE LOWER(slug) = LOWER(?)').run(slug);
+  const cleanSlug = slug.replace(/^\/+|\/+$/g, '').toLowerCase();
+  return db.prepare('UPDATE url_redirects SET hits = hits + 1 WHERE LOWER(slug) = ?').run(cleanSlug);
 }
 
 // Dynamic DNS Config Helpers
@@ -279,6 +291,7 @@ module.exports = {
   incrementDomainHits,
   getAllRedirects,
   getRedirectBySlug,
+  findMatchingRewrite,
   addRedirect,
   deleteRedirect,
   incrementRedirectHits,

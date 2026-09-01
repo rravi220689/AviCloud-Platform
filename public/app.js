@@ -115,9 +115,10 @@ function switchTab(tabId) {
   const titles = {
     overview: 'Platform Overview',
     storage: '100 GB Cloud Drive',
+    nfs: 'NFS Network File System Share',
     databases: 'Database Servers & Connection Hub',
     domains: 'Domains & Dynamic Reverse Proxy',
-    redirects: 'Universal URL Redirection & Forwarding',
+    redirects: 'Universal URL Rewriter & Outside Links',
     network: 'Free Remote Tunnels & Dynamic DNS',
     apps: 'Cloud App Store',
     shares: 'Active Public Shares',
@@ -126,6 +127,7 @@ function switchTab(tabId) {
   document.getElementById('headerTitle').innerText = titles[tabId] || 'AviCloud';
 
   if (tabId === 'storage') refreshStorage();
+  if (tabId === 'nfs') loadNfsStatus();
   if (tabId === 'databases') loadDatabases();
   if (tabId === 'domains') loadDomains();
   if (tabId === 'redirects') loadRedirects();
@@ -192,6 +194,62 @@ function updateTelemetryUI(metrics, tunnel) {
         urlBox.classList.add('hidden');
       }
     }
+  }
+}
+
+// -------------------------------------------------------------
+// NFS Network File Share
+// -------------------------------------------------------------
+async function loadNfsStatus() {
+  try {
+    const res = await fetch('/api/nfs/status', {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    const badge = document.getElementById('nfsStatusBadge');
+    const toggleBtn = document.getElementById('nfsToggleBtn');
+
+    if (data.isRunning) {
+      badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span> NFS ACTIVE (Port 2049)';
+      toggleBtn.className = 'px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/30 transition';
+      toggleBtn.innerText = 'Stop NFS';
+    } else {
+      badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700';
+      badge.innerText = 'NFS STOPPED';
+      toggleBtn.className = 'gradient-btn px-4 py-2 text-white text-xs font-semibold rounded-xl shadow transition';
+      toggleBtn.innerText = 'Start NFS';
+    }
+
+    if (data.mountCommands) {
+      document.getElementById('nfsCmdLinux').innerText = data.mountCommands.linux;
+      document.getElementById('nfsCmdMac').innerText = data.mountCommands.macos;
+      document.getElementById('nfsCmdWin').innerText = data.mountCommands.windows;
+    }
+  } catch (err) {
+    console.error('Error loading NFS status:', err);
+  }
+}
+
+async function toggleNfsServer() {
+  try {
+    const statusRes = await fetch('/api/nfs/status', {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const statusData = await statusRes.json();
+    const action = statusData.isRunning ? 'stop' : 'start';
+
+    const res = await fetch(`/api/nfs/${action}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    alert(data.message || `NFS server ${action}ed`);
+    loadNfsStatus();
+  } catch (_) {
+    alert('Failed to toggle NFS server');
   }
 }
 
@@ -340,7 +398,7 @@ async function deleteStorageItem(pathStr) {
 }
 
 // -------------------------------------------------------------
-// Universal URL Redirection
+// Universal URL Rewriter & Outside Links
 // -------------------------------------------------------------
 async function loadRedirects() {
   try {
@@ -352,31 +410,32 @@ async function loadRedirects() {
 
     const tbody = document.getElementById('redirectsTableBody');
     if (data.redirects.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No URL redirection rules created yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No URL rewrite rules created yet. Click "Add URL Rewrite Rule" above!</td></tr>';
       return;
     }
 
     const liveBase = currentLiveTunnelUrl || window.location.origin;
 
     tbody.innerHTML = data.redirects.map(r => {
-      const localUrl = `${window.location.origin}/r/${r.slug}`;
-      const outsideUrl = currentLiveTunnelUrl ? `${currentLiveTunnelUrl}/r/${r.slug}` : localUrl;
+      const cleanSlug = r.slug.replace(/^\/+/, '');
+      const localUrl = `${window.location.origin}/${cleanSlug}`;
+      const outsideUrl = currentLiveTunnelUrl ? `${currentLiveTunnelUrl}/${cleanSlug}` : localUrl;
 
       return `
         <tr class="hover:bg-slate-900/40 transition">
           <td class="p-4 font-mono">
-            <span class="font-bold text-amber-400">/r/${r.slug}</span>
+            <span class="font-bold text-amber-400">/${cleanSlug}</span>
             <div class="text-[10px] text-cyan-400 mt-1 flex items-center gap-1.5 truncate max-w-xs">
               <i class="fa-solid fa-globe text-[9px]"></i>
-              <a href="${outsideUrl}" target="_blank" class="hover:underline truncate">${outsideUrl}</a>
+              <a href="${outsideUrl}" target="_blank" class="hover:underline truncate" title="Outside URL">${outsideUrl}</a>
             </div>
           </td>
           <td class="p-4 font-mono text-slate-300 truncate max-w-xs" title="${r.target_url}">
             <a href="${r.target_url}" target="_blank" class="text-slate-300 hover:underline">${r.target_url}</a>
           </td>
           <td class="p-4">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">
-              ${r.redirect_type}
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${r.redirect_type === 'proxy' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'} uppercase">
+              ${r.redirect_type === 'proxy' ? 'REVERSE PROXY' : r.redirect_type}
             </span>
           </td>
           <td class="p-4 text-slate-300 font-bold">${r.hits || 0}</td>
@@ -391,7 +450,7 @@ async function loadRedirects() {
       `;
     }).join('');
   } catch (err) {
-    console.error('Error loading redirects:', err);
+    console.error('Error loading rewrites:', err);
   }
 }
 
@@ -424,7 +483,7 @@ document.getElementById('addRedirectForm').addEventListener('submit', async (e) 
       closeAddRedirectModal();
       loadRedirects();
     } else {
-      alert(data.error || 'Failed to create redirect rule');
+      alert(data.error || 'Failed to create rewrite rule');
     }
   } catch (err) {
     alert('Network error');
@@ -432,7 +491,7 @@ document.getElementById('addRedirectForm').addEventListener('submit', async (e) 
 });
 
 async function deleteRedirect(id) {
-  if (!confirm('Delete this redirection rule?')) return;
+  if (!confirm('Delete this rewrite rule?')) return;
   try {
     const res = await fetch(`/api/redirects/${id}`, {
       method: 'DELETE',
@@ -1263,6 +1322,7 @@ function escapeHtml(str) {
 
 async function loadAllData() {
   refreshStorage();
+  loadNfsStatus();
   loadDatabases();
   loadDomains();
   loadRedirects();

@@ -12,6 +12,7 @@ const proxy = require('./src/proxy');
 const storage = require('./src/storage');
 const system = require('./src/system');
 const tunnel = require('./src/tunnel');
+const nfsManager = require('./src/nfsManager');
 
 // Initialize database
 db.initDatabase();
@@ -41,9 +42,10 @@ app.get('/outside', (req, res) => {
   `);
 });
 
-// Universal URL Redirection Route: /r/:slug
-app.get('/r/:slug', (req, res) => {
-  const rule = db.getRedirectBySlug(req.params.slug);
+// Explicit Shortlink Redirection: /r/:slug
+app.all('/r/:slug*', (req, res, next) => {
+  const slugParam = req.params.slug;
+  const rule = db.getRedirectBySlug(slugParam);
   if (!rule) {
     return res.status(404).send(`
       <!DOCTYPE html>
@@ -52,7 +54,7 @@ app.get('/r/:slug', (req, res) => {
       <body>
         <div class="card">
           <h1>Redirection Rule Not Found</h1>
-          <p>No destination configured for slug "<strong>${req.params.slug}</strong>".</p>
+          <p>No destination configured for slug "<strong>${slugParam}</strong>".</p>
         </div>
       </body>
       </html>
@@ -77,8 +79,48 @@ app.get('/r/:slug', (req, res) => {
   }
 });
 
-// Serve static frontend dashboard
-app.use(express.static(path.join(__dirname, 'public')));
+// Dynamic Top-Level Path Rewriter Middleware
+// Allows custom vanity paths like /jenkins, /notekeeper, /my-app, /docs from anywhere
+app.use((req, res, next) => {
+  const reqPath = req.path.replace(/^\/+|\/+$/g, '');
+
+  // Exclude core system routes and static files
+  const reservedPrefixes = ['api', 's', 'r', 'outside', 'ws', 'index.html', 'app.js', 'style.css', 'share.html', 'favicon.ico'];
+  if (!reqPath || reservedPrefixes.includes(reqPath.split('/')[0])) {
+    return next();
+  }
+
+  const match = db.findMatchingRewrite(reqPath);
+  if (match) {
+    const { rule, remainingPath } = match;
+    db.incrementRedirectHits(rule.slug);
+
+    if (rule.redirect_type === 'proxy') {
+      let target = rule.target_url;
+      if (remainingPath) {
+        target = target.replace(/\/+$/, '') + remainingPath;
+      }
+      return proxy.handleProxyRequest(req, res, target);
+    } else if (rule.redirect_type === 'iframe') {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>${rule.description || 'AviCloud Embedded Frame'}</title><style>body,html{margin:0;padding:0;height:100%;overflow:hidden;}iframe{border:none;width:100%;height:100%;}</style></head>
+        <body><iframe src="${rule.target_url}"></iframe></body>
+        </html>
+      `);
+    } else {
+      const statusCode = parseInt(rule.redirect_type || '302', 10);
+      let target = rule.target_url;
+      if (remainingPath) {
+        target = target.replace(/\/+$/, '') + remainingPath;
+      }
+      return res.redirect(statusCode, target);
+    }
+  }
+
+  next();
+});
 
 // Public File Share Route: /s/:token
 app.get('/s/:token', (req, res) => {
@@ -209,6 +251,9 @@ app.get('/s/:token/download', (req, res) => {
   }
 });
 
+// Serve static frontend dashboard
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Mount Main API Routes
 app.use('/api', apiRoutes);
 
@@ -236,7 +281,6 @@ function broadcastTelemetry() {
 }
 
 wss.on('connection', (ws) => {
-  // Send immediate state
   try {
     const metrics = system.getSystemMetrics();
     const tunnelStatus = tunnel.getTunnelStatus();
@@ -261,9 +305,13 @@ server.listen(config.PORT, () => {
   console.log(`💾 100 GB Cloud Storage: ${config.STORAGE_DIR}`);
   console.log(`====================================================`);
 
-  // Automatically start Cloudflare tunnel in the background
+  // Start 24/7 background Cloudflare tunnel
   console.log('[AviCloud Startup] Launching 24/7 background Cloudflare tunnel...');
   tunnel.startTunnel('cloudflare', config.PORT);
+
+  // Ensure NFS server is running on port 2049
+  console.log('[AviCloud Startup] Initializing NFS Server (Port 2049)...');
+  nfsManager.startNfsServer();
 });
 
 // Start Dynamic Reverse Proxy on dedicated port

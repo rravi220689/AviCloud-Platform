@@ -95,6 +95,11 @@
           <span>100GB Cloud Drive</span>
         </button>
 
+        <button onclick="switchTab('nfs')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="nfs">
+          <i class="fa-solid fa-network-wired w-5 text-center text-teal-400"></i>
+          <span>NFS Network Share</span>
+        </button>
+
         <button onclick="switchTab('databases')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="databases">
           <i class="fa-solid fa-database w-5 text-center text-emerald-400"></i>
           <span>Database Hub</span>
@@ -107,7 +112,7 @@
 
         <button onclick="switchTab('redirects')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="redirects">
           <i class="fa-solid fa-diamond-turn-right w-5 text-center text-amber-400"></i>
-          <span>URL Redirection</span>
+          <span>URL Rewriter & Links</span>
         </button>
 
         <button onclick="switchTab('network')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="network">
@@ -172,7 +177,6 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Quick Action Button -->
         <button onclick="openUploadModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2 shadow-md">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>Upload to Cloud</span>
@@ -227,25 +231,25 @@
                 <i class="fa-solid fa-tower-broadcast"></i>
               </div>
             </div>
-            <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Ready</div>
+            <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Online (24/7)</div>
             <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Cloudflare / Pinggy / DDNS</p>
             <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
               <div id="statTunnelBar" class="h-full bg-purple-400" style="width: 100%"></div>
             </div>
           </div>
 
-          <!-- System Health Card -->
+          <!-- NFS Share Card -->
           <div class="glass-card p-6">
             <div class="flex items-center justify-between text-slate-400 mb-3">
-              <span class="text-xs font-bold uppercase tracking-wider">System Load</span>
-              <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
-                <i class="fa-solid fa-microchip"></i>
+              <span class="text-xs font-bold uppercase tracking-wider">NFS Network Share</span>
+              <div class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                <i class="fa-solid fa-network-wired"></i>
               </div>
             </div>
-            <div class="text-2xl font-extrabold text-white" id="statCpuMem">0% CPU • 0% RAM</div>
-            <p class="text-xs text-slate-400 mt-1" id="statUptime">Uptime: 0m</p>
+            <div class="text-2xl font-extrabold text-white" id="statNfsStatus">Port 2049</div>
+            <p class="text-xs text-teal-400 mt-1">Export: /storage</p>
             <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
-              <div id="statCpuBar" class="h-full bg-blue-400" style="width: 0%"></div>
+              <div class="h-full bg-teal-400 w-full"></div>
             </div>
           </div>
         </div>
@@ -264,13 +268,13 @@
               </div>
             </div>
 
-            <div onclick="switchTab('databases')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-                <i class="fa-solid fa-database"></i>
+            <div onclick="switchTab('nfs')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-network-wired"></i>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white mb-1">Database Hub</h4>
-                <p class="text-xs text-slate-400">Query MySQL, Postgres & MSSQL.</p>
+                <h4 class="text-sm font-bold text-white mb-1">NFS Storage Share</h4>
+                <p class="text-xs text-slate-400">Mount drive across Linux, Mac & Windows.</p>
               </div>
             </div>
 
@@ -279,18 +283,18 @@
                 <i class="fa-solid fa-diamond-turn-right"></i>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white mb-1">URL Redirection</h4>
-                <p class="text-xs text-slate-400">Forward any slug or domain to custom URLs.</p>
+                <h4 class="text-sm font-bold text-white mb-1">URL Rewriter</h4>
+                <p class="text-xs text-slate-400">Rewrite any outside link to any destination.</p>
               </div>
             </div>
 
-            <div onclick="switchTab('network')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl shrink-0">
-                <i class="fa-solid fa-bolt"></i>
+            <div onclick="switchTab('databases')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-database"></i>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-white mb-1">Free Tunnels</h4>
-                <p class="text-xs text-slate-400">Instant HTTPS access via Cloudflare & Pinggy.</p>
+                <h4 class="text-sm font-bold text-white mb-1">Database Hub</h4>
+                <p class="text-xs text-slate-400">Query MySQL, Postgres & MSSQL.</p>
               </div>
             </div>
           </div>
@@ -331,7 +335,85 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 3: DATABASE CLOUD HUB -->
+      <!-- TAB 3: NFS NETWORK SHARE -->
+      <!-- ========================================================================= -->
+      <section id="tab-nfs" class="hidden space-y-6">
+        <div class="glass-card p-6 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-network-wired"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">NFS (Network File System) Share</h3>
+              <p class="text-xs text-slate-400">Share your 100 GB Cloud Storage across the local network for Linux, macOS, and Windows.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="nfsStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              NFS ACTIVE (Port 2049)
+            </span>
+            <button onclick="toggleNfsServer()" id="nfsToggleBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition">
+              Restart NFS
+            </button>
+          </div>
+        </div>
+
+        <!-- Connection Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="glass-card p-6">
+            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">Export Path</span>
+            <p class="text-base font-mono font-bold text-cyan-400">/storage</p>
+            <p class="text-xs text-slate-500 mt-1">Host Directory: <code>/home/avinash/cloud-platform/storage_data</code></p>
+          </div>
+          <div class="glass-card p-6">
+            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">NFS Port</span>
+            <p class="text-base font-mono font-bold text-teal-400">2049 (TCP & UDP)</p>
+            <p class="text-xs text-slate-500 mt-1">RPC Port: 111</p>
+          </div>
+          <div class="glass-card p-6">
+            <span class="text-xs font-bold uppercase text-slate-400 block mb-1">Protocol Version</span>
+            <p class="text-base font-mono font-bold text-amber-400">NFSv3 (User-Space daemon)</p>
+            <p class="text-xs text-slate-500 mt-1">Compatible with all OS clients</p>
+          </div>
+        </div>
+
+        <!-- Client Mount Commands -->
+        <div class="glass-card p-6 space-y-4">
+          <h4 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-terminal text-teal-400"></i> Client Mount Instructions
+          </h4>
+
+          <!-- Linux -->
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span><i class="fa-brands fa-linux text-yellow-400 mr-1.5"></i> Linux Client Mount:</span>
+              <button onclick="copyToClipboard(document.getElementById('nfsCmdLinux').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdLinux">sudo mkdir -p /mnt/avicloud && sudo mount -t nfs -o port=2049,mountport=2049,nfsvers=3,nolock 127.0.0.1:/storage /mnt/avicloud</pre>
+          </div>
+
+          <!-- macOS -->
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span><i class="fa-brands fa-apple text-slate-200 mr-1.5"></i> macOS Client Mount:</span>
+              <button onclick="copyToClipboard(document.getElementById('nfsCmdMac').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdMac">sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock 127.0.0.1:/storage /Volumes/AviCloud</pre>
+          </div>
+
+          <!-- Windows -->
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+              <span><i class="fa-brands fa-windows text-blue-400 mr-1.5"></i> Windows Client Mount (Map Network Drive):</span>
+              <button onclick="copyToClipboard(document.getElementById('nfsCmdWin').innerText)" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+            </div>
+            <pre class="bg-slate-900/90 p-3 rounded-xl text-xs font-mono text-slate-200 border border-slate-800" id="nfsCmdWin">mount -o anon,nolock \\127.0.0.1\storage Z:</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 4: DATABASE CLOUD HUB -->
       <!-- ========================================================================= -->
       <section id="tab-databases" class="hidden space-y-6">
         <div class="glass-card p-6 flex items-center justify-between">
@@ -348,7 +430,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 4: DOMAINS & REVERSE PROXY -->
+      <!-- TAB 5: DOMAINS & REVERSE PROXY -->
       <!-- ========================================================================= -->
       <section id="tab-domains" class="hidden space-y-6">
         <div class="glass-card p-6 flex items-center justify-between">
@@ -379,16 +461,16 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 5: UNIVERSAL URL REDIRECTION & SHORTLINK RULES -->
+      <!-- TAB 6: UNIVERSAL URL REWRITER & OUTSIDE LINKS -->
       <!-- ========================================================================= -->
       <section id="tab-redirects" class="hidden space-y-6">
         <div class="glass-card p-6 flex items-center justify-between">
           <div>
-            <h3 class="text-base font-bold text-white">Universal URL Redirection & Forwarding</h3>
-            <p class="text-xs text-slate-400 mt-1">Create custom links (e.g. <code>http://localhost:9000/r/myproject</code>) that redirect or reverse-proxy to any destination URL.</p>
+            <h3 class="text-base font-bold text-white">Universal URL Rewriter & Outside Links</h3>
+            <p class="text-xs text-slate-400 mt-1">Rewrite any custom path (e.g. <code>/my-app</code>, <code>/notekeeper</code>, <code>/jenkins</code>) to proxy or redirect to any internal port or external URL.</p>
           </div>
           <button onclick="openAddRedirectModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> Add Redirect Rule
+            <i class="fa-solid fa-plus"></i> Add URL Rewrite Rule
           </button>
         </div>
 
@@ -396,9 +478,9 @@
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
               <tr>
-                <th class="p-4">Shortlink / Slug</th>
-                <th class="p-4">Target Destination URL</th>
-                <th class="p-4">Redirect Type</th>
+                <th class="p-4">Custom URL Path / Slug</th>
+                <th class="p-4">Target Destination</th>
+                <th class="p-4">Mode</th>
                 <th class="p-4">Hits</th>
                 <th class="p-4">Description</th>
                 <th class="p-4 text-right">Actions</th>
@@ -410,7 +492,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 6: FREE REMOTE TUNNELS & MULTI-PROVIDER DDNS -->
+      <!-- TAB 7: FREE REMOTE TUNNELS & MULTI-PROVIDER DDNS -->
       <!-- ========================================================================= -->
       <section id="tab-network" class="hidden space-y-6">
         <!-- Multi-Provider Remote Tunnels Card -->
@@ -421,7 +503,7 @@
                 <i class="fa-solid fa-tower-broadcast"></i>
               </div>
               <div>
-                <h3 class="text-base font-bold text-white">Instant Free Remote HTTPS Tunnels</h3>
+                <h3 class="text-base font-bold text-white">Instant Free Remote HTTPS Tunnels (24/7 Background)</h3>
                 <p class="text-xs text-slate-400">Zero-port-forwarding public access via Cloudflare, Pinggy, or Localhost.run.</p>
               </div>
             </div>
@@ -538,7 +620,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 7: CLOUD APP STORE -->
+      <!-- TAB 8: CLOUD APP STORE -->
       <!-- ========================================================================= -->
       <section id="tab-apps" class="hidden space-y-6">
         <div>
@@ -568,7 +650,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 8: ACTIVE SHARE LINKS -->
+      <!-- TAB 9: ACTIVE SHARE LINKS -->
       <!-- ========================================================================= -->
       <section id="tab-shares" class="hidden space-y-6">
         <div class="glass-card p-6">
@@ -594,7 +676,7 @@
       </section>
 
       <!-- ========================================================================= -->
-      <!-- TAB 9: SETTINGS & SECURITY -->
+      <!-- TAB 10: SETTINGS & SECURITY -->
       <!-- ========================================================================= -->
       <section id="tab-settings" class="hidden space-y-6 max-w-2xl">
         <div class="glass-card p-6">
@@ -630,46 +712,46 @@
   <!-- MODALS -->
   <!-- ========================================================================= -->
 
-  <!-- Add URL Redirect Modal -->
+  <!-- Add URL Rewrite / Redirect Modal -->
   <div id="addRedirectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
     <div class="glass-card max-w-md w-full p-6 relative">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-bold text-white">Add URL Redirection Rule</h3>
+        <h3 class="text-base font-bold text-white">Add URL Rewrite / Outside Link</h3>
         <button onclick="closeAddRedirectModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <form id="addRedirectForm" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Shortlink Slug (e.g. <code>myproject</code>)</label>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Custom Path / Vanity Slug (e.g. <code>my-app</code> or <code>jenkins</code>)</label>
           <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-            <span class="px-3 text-xs text-slate-500 font-mono">/r/</span>
-            <input type="text" id="redirectSlug" required placeholder="myproject" class="w-full p-2.5 bg-transparent text-slate-200 text-xs focus:outline-none">
+            <span class="px-3 text-xs text-slate-500 font-mono">/</span>
+            <input type="text" id="redirectSlug" required placeholder="my-app" class="w-full p-2.5 bg-transparent text-slate-200 text-xs focus:outline-none">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Destination URL</label>
-          <input type="text" id="redirectTarget" required placeholder="https://github.com/myrepo or http://localhost:4000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Destination (Port, Internal URL, or External Link)</label>
+          <input type="text" id="redirectTarget" required placeholder="http://localhost:4004 or https://github.com/repo" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Forwarding Type</label>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Routing Mode</label>
           <select id="redirectType" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
-            <option value="302" selected>302 Temporary Redirect (Standard Forward)</option>
+            <option value="proxy" selected>Transparent Reverse Proxy (Serves app seamlessly via Outside URL)</option>
+            <option value="302">302 Temporary Redirect (Standard HTTP Forward)</option>
             <option value="301">301 Permanent Redirect</option>
-            <option value="proxy">Reverse Proxy (Transparent Masking)</option>
-            <option value="iframe">Embedded Frame</option>
+            <option value="iframe">Embedded Frame (iFrame)</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Description (Optional)</label>
-          <input type="text" id="redirectDesc" placeholder="e.g. Project Repository link" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+          <input type="text" id="redirectDesc" placeholder="e.g. NoteKeeper Web App outside router" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
         </div>
 
         <div class="flex justify-end gap-3 mt-6">
           <button type="button" onclick="closeAddRedirectModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
-          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Redirection</button>
+          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Rewrite Rule</button>
         </div>
       </form>
     </div>

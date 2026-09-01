@@ -14,6 +14,7 @@ const docker = require('./docker');
 const system = require('./system');
 const multipart = require('./multipart');
 const databaseManager = require('./databaseManager');
+const nfsManager = require('./nfsManager');
 
 const router = express.Router();
 
@@ -221,7 +222,25 @@ router.get('/storage/download', (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 3. Public Share Links Management
+// 3. NFS Network File Share API
+// -------------------------------------------------------------
+router.get('/nfs/status', authRequired, (req, res) => {
+  const host = req.headers.host ? req.headers.host.split(':')[0] : '127.0.0.1';
+  res.json({ success: true, ...nfsManager.getNfsInfo(host) });
+});
+
+router.post('/nfs/start', authRequired, (req, res) => {
+  const result = nfsManager.startNfsServer();
+  res.json(result);
+});
+
+router.post('/nfs/stop', authRequired, (req, res) => {
+  const result = nfsManager.stopNfsServer();
+  res.json(result);
+});
+
+// -------------------------------------------------------------
+// 4. Public Share Links Management
 // -------------------------------------------------------------
 router.get('/shares', authRequired, (req, res) => {
   const shares = db.getAllShareLinks();
@@ -275,7 +294,7 @@ router.delete('/shares/:id', authRequired, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 4. Domains & Dynamic Reverse Proxy API
+// 5. Domains & Dynamic Reverse Proxy API
 // -------------------------------------------------------------
 router.get('/domains', authRequired, (req, res) => {
   const domains = db.getAllDomains();
@@ -317,7 +336,7 @@ router.delete('/domains/:id', authRequired, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 5. Universal URL Redirection & Shortlink Rules
+// 6. Universal URL Rewriting & Redirection Rules
 // -------------------------------------------------------------
 router.get('/redirects', authRequired, (req, res) => {
   const redirects = db.getAllRedirects();
@@ -330,9 +349,9 @@ router.post('/redirects', authRequired, (req, res) => {
     if (!slug || !target_url) {
       return res.status(400).json({ success: false, error: 'Slug and target URL are required' });
     }
-    const cleanSlug = slug.toLowerCase().trim().replace(/^\//, '');
+    const cleanSlug = slug.toLowerCase().trim().replace(/^\/+|\/+$/g, '');
     db.addRedirect(cleanSlug, target_url, redirect_type || '302', description || '');
-    res.json({ success: true, message: `Redirect rule /r/${cleanSlug} created -> ${target_url}` });
+    res.json({ success: true, message: `Rewrite rule /${cleanSlug} created -> ${target_url}` });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -341,14 +360,14 @@ router.post('/redirects', authRequired, (req, res) => {
 router.delete('/redirects/:id', authRequired, (req, res) => {
   try {
     db.deleteRedirect(req.params.id);
-    res.json({ success: true, message: 'Redirect rule deleted' });
+    res.json({ success: true, message: 'Rewrite rule deleted' });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
 // -------------------------------------------------------------
-// 6. Database Cloud Hub Endpoints
+// 7. Database Cloud Hub Endpoints
 // -------------------------------------------------------------
 router.get('/databases', authRequired, async (req, res) => {
   try {
@@ -382,7 +401,7 @@ router.post('/databases/backup', authRequired, async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 7. Outside Network & Remote Access API (Multi-Provider)
+// 8. Outside Network & Remote Access API (Multi-Provider)
 // -------------------------------------------------------------
 router.get('/network/info', authRequired, async (req, res) => {
   const publicIp = await tunnel.getPublicIP();
@@ -426,7 +445,7 @@ router.delete('/network/ddns/:id', authRequired, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 8. Cloud App Store & Docker API
+// 9. Cloud App Store & Docker API
 // -------------------------------------------------------------
 router.get('/apps/templates', authRequired, (req, res) => {
   res.json({
@@ -471,7 +490,7 @@ router.get('/apps/logs/:name', authRequired, async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 9. System Metrics API
+// 10. System Metrics API
 // -------------------------------------------------------------
 router.get('/system/metrics', authRequired, (req, res) => {
   res.json({ success: true, metrics: system.getSystemMetrics() });
