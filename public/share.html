@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Content - AviCloud</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background: radial-gradient(circle at top right, #1e293b, #0f172a);
+      min-height: 100vh;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4">
+  <div class="glass-card rounded-3xl p-8 max-w-md w-full text-center relative overflow-hidden">
+    <div class="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl"></div>
+
+    <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-3xl mb-6 shadow-inner" id="fileIcon">
+      <i class="fa-solid fa-file"></i>
+    </div>
+
+    <h1 class="text-2xl font-bold text-slate-100 mb-2 truncate" id="fileName">Loading...</h1>
+    <p class="text-sm text-slate-400 mb-6" id="fileMeta">Fetching file details...</p>
+
+    <!-- Password Prompt -->
+    <div id="passwordSection" class="hidden mb-6 text-left">
+      <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Password Protected</label>
+      <div class="relative">
+        <input type="password" id="sharePassword" placeholder="Enter password to download" class="w-full px-4 py-3 bg-slate-800/80 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-cyan-500 transition">
+        <i class="fa-solid fa-lock absolute right-4 top-3.5 text-slate-500"></i>
+      </div>
+    </div>
+
+    <!-- Download Action -->
+    <button id="downloadBtn" class="w-full py-3.5 px-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/25 transition transform active:scale-95 flex items-center justify-center gap-2">
+      <i class="fa-solid fa-cloud-arrow-down"></i>
+      <span>Download File</span>
+    </button>
+
+    <div class="mt-8 pt-6 border-t border-slate-700/50 flex items-center justify-between text-xs text-slate-500">
+      <span>Powered by <strong>AviCloud</strong></span>
+      <span class="flex items-center gap-1"><i class="fa-solid fa-shield-halved text-cyan-400"></i> Secure Sharing</span>
+    </div>
+  </div>
+
+  <script>
+    const token = window.location.pathname.split('/').pop();
+    let shareInfo = null;
+
+    async function loadShareInfo() {
+      try {
+        const res = await fetch(`/api/public/share/${token}`);
+        const data = await res.json();
+        
+        if (!data.success) {
+          document.getElementById('fileName').innerText = 'File Unavailable';
+          document.getElementById('fileMeta').innerText = data.error || 'This link has expired or does not exist.';
+          document.getElementById('downloadBtn').disabled = true;
+          document.getElementById('downloadBtn').classList.add('opacity-50', 'cursor-not-allowed');
+          return;
+        }
+
+        shareInfo = data;
+        document.getElementById('fileName').innerText = data.name;
+        document.getElementById('fileMeta').innerText = `${data.sizeFormatted} • ${data.isDirectory ? 'ZIP Folder' : 'Direct File'}`;
+
+        if (data.isDirectory) {
+          document.getElementById('fileIcon').innerHTML = '<i class="fa-solid fa-folder-tree text-amber-400"></i>';
+          document.getElementById('downloadBtn').querySelector('span').innerText = 'Download Folder as ZIP';
+        }
+
+        if (data.hasPassword) {
+          document.getElementById('passwordSection').classList.remove('hidden');
+        }
+      } catch (err) {
+        document.getElementById('fileName').innerText = 'Error';
+        document.getElementById('fileMeta').innerText = 'Failed to fetch share details.';
+      }
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      let downloadUrl = `/s/${token}/download`;
+      if (shareInfo && shareInfo.hasPassword) {
+        const pwd = document.getElementById('sharePassword').value;
+        if (!pwd) {
+          alert('Please enter the password to download.');
+          return;
+        }
+        downloadUrl += `?pwd=${encodeURIComponent(pwd)}`;
+      }
+      window.location.href = downloadUrl;
+    });
+
+    loadShareInfo();
+  </script>
+</body>
+</html>

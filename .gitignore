@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Runtime binaries
+bin/cloudflared
+
+# Database & Runtime logs
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.pid
+data/*.log
+data/autostart.log
+
+# User Cloud Storage Files (keep folder structure)
+storage_data/*
+!storage_data/.gitkeep
+!storage_data/Database_Backups/
+!storage_data/Database_Backups/.gitkeep
+!storage_data/Documents/
+!storage_data/Documents/.gitkeep
+!storage_data/Media/
+!storage_data/Media/.gitkeep
+
+# Environment variables
+.env
+.DS_Store
+*.swp

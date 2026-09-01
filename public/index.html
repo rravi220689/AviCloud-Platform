@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AviCloud — Personal Cloud Platform & 100GB Storage</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="flex h-screen overflow-hidden text-slate-100">
+
+  <!-- ========================================================================= -->
+  <!-- AUTHENTICATION OVERLAY / LOGIN MODAL -->
+  <!-- ========================================================================= -->
+  <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-md w-full p-8 relative overflow-hidden">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-3xl mb-4">
+          <i class="fa-solid fa-cloud"></i>
+        </div>
+        <h2 class="text-2xl font-extrabold text-white">AviCloud Platform</h2>
+        <p class="text-sm text-slate-400 mt-1">Sign in to manage storage, databases & domains</p>
+      </div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Username</label>
+          <div class="relative">
+            <input type="text" id="loginUsername" required class="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+            <i class="fa-solid fa-user absolute right-4 top-3.5 text-slate-500 text-sm"></i>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Password</label>
+          <div class="relative">
+            <input type="password" id="loginPassword" required class="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+            <i class="fa-solid fa-lock absolute right-4 top-3.5 text-slate-500 text-sm"></i>
+          </div>
+        </div>
+
+        <div id="loginError" class="hidden text-xs text-rose-400 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl"></div>
+
+        <button type="submit" class="w-full py-3.5 gradient-btn text-white font-semibold rounded-xl text-sm shadow-lg shadow-cyan-500/20 transition">
+          Sign In to Cloud
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- SIDEBAR NAVIGATION -->
+  <!-- ========================================================================= -->
+  <aside class="w-64 glass flex flex-col justify-between border-r border-slate-800/80 z-20 shrink-0">
+    <div>
+      <!-- Brand Logo -->
+      <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-800/60">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/30">
+          <i class="fa-solid fa-cloud-bolt text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-base tracking-wide gradient-text">AviCloud</h1>
+          <p class="text-[10px] text-cyan-400/80 font-medium uppercase tracking-wider">Cloud Platform</p>
+        </div>
+      </div>
+
+      <!-- Storage Pool Meter Widget (100 GB) -->
+      <div class="p-4 mx-3 my-4 glass-card bg-slate-900/60 border border-cyan-500/20">
+        <div class="flex items-center justify-between text-xs mb-2">
+          <span class="text-slate-300 font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-hard-drive text-cyan-400"></i> 100 GB Pool
+          </span>
+          <span class="text-cyan-400 font-bold" id="sidebarQuotaPercent">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-2">
+          <div id="sidebarQuotaBar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-400">
+          <span id="sidebarQuotaUsed">0 MB Used</span>
+          <span>100 GB Max</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="px-3 space-y-1">
+        <button onclick="switchTab('overview')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-cyan-400 bg-cyan-500/10" data-tab="overview">
+          <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+          <span>Overview</span>
+        </button>
+
+        <button onclick="switchTab('storage')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="storage">
+          <i class="fa-solid fa-folder-open w-5 text-center"></i>
+          <span>100GB Cloud Drive</span>
+        </button>
+
+        <button onclick="switchTab('databases')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="databases">
+          <i class="fa-solid fa-database w-5 text-center text-emerald-400"></i>
+          <span>Database Hub</span>
+        </button>
+
+        <button onclick="switchTab('domains')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="domains">
+          <i class="fa-solid fa-globe w-5 text-center"></i>
+          <span>Domains & Proxy</span>
+        </button>
+
+        <button onclick="switchTab('redirects')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="redirects">
+          <i class="fa-solid fa-diamond-turn-right w-5 text-center text-amber-400"></i>
+          <span>URL Redirection</span>
+        </button>
+
+        <button onclick="switchTab('network')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="network">
+          <i class="fa-solid fa-tower-broadcast w-5 text-center text-purple-400"></i>
+          <span>Free Remote Tunnels</span>
+        </button>
+
+        <button onclick="switchTab('apps')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="apps">
+          <i class="fa-solid fa-cubes w-5 text-center"></i>
+          <span>App Store</span>
+        </button>
+
+        <button onclick="switchTab('shares')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="shares">
+          <i class="fa-solid fa-share-nodes w-5 text-center"></i>
+          <span>Active Shares</span>
+        </button>
+
+        <button onclick="switchTab('settings')" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-tab="settings">
+          <i class="fa-solid fa-sliders w-5 text-center"></i>
+          <span>Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-4 border-t border-slate-800/60">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5 truncate">
+          <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 font-bold text-xs border border-slate-700">
+            <i class="fa-solid fa-user-astronaut"></i>
+          </div>
+          <div class="truncate">
+            <p class="text-xs font-semibold text-slate-200 truncate" id="sidebarUsername">avinash</p>
+            <p class="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Cloud Master
+            </p>
+          </div>
+        </div>
+        <button onclick="logout()" title="Sign Out" class="text-slate-500 hover:text-rose-400 p-2 transition">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTENT AREA -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+    <!-- Top Header -->
+    <header class="h-16 glass border-b border-slate-800/80 px-8 flex items-center justify-between shrink-0 z-10">
+      <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold text-slate-100" id="headerTitle">Platform Overview</h2>
+        <!-- Live WS Telemetry Status -->
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Telemetry
+        </span>
+        <!-- Tunnel Indicator -->
+        <div id="topTunnelBadge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <i class="fa-solid fa-shield-halved text-[10px]"></i> Remote Tunnel Online
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Quick Action Button -->
+        <button onclick="openUploadModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2 shadow-md">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>Upload to Cloud</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scrollable Content Views -->
+    <div class="flex-1 overflow-y-auto p-8" id="viewContainer">
+
+      <!-- ========================================================================= -->
+      <!-- TAB 1: OVERVIEW -->
+      <!-- ========================================================================= -->
+      <section id="tab-overview" class="space-y-8">
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- 100GB Storage Card -->
+          <div class="glass-card p-6">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider">Cloud Storage (100GB)</span>
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                <i class="fa-solid fa-database"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white" id="statStorageUsed">0 MB</div>
+            <p class="text-xs text-slate-400 mt-1" id="statStorageFree">100 GB Available</p>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
+              <div id="statStorageBar" class="h-full bg-cyan-400" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Connected Databases Card -->
+          <div class="glass-card p-6">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider">Database Servers</span>
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <i class="fa-solid fa-server"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white" id="statDbCount">5 Online</div>
+            <p class="text-xs text-slate-400 mt-1">MySQL • MariaDB • PG • MSSQL</p>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
+              <div class="h-full bg-emerald-400 w-full"></div>
+            </div>
+          </div>
+
+          <!-- Outside Access Card -->
+          <div class="glass-card p-6">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider">Remote Access</span>
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <i class="fa-solid fa-tower-broadcast"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white" id="statTunnelStatus">Ready</div>
+            <p class="text-xs text-purple-400 mt-1 truncate" id="statTunnelUrl">Cloudflare / Pinggy / DDNS</p>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
+              <div id="statTunnelBar" class="h-full bg-purple-400" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <!-- System Health Card -->
+          <div class="glass-card p-6">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider">System Load</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <i class="fa-solid fa-microchip"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white" id="statCpuMem">0% CPU • 0% RAM</div>
+            <p class="text-xs text-slate-400 mt-1" id="statUptime">Uptime: 0m</p>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full mt-4 overflow-hidden">
+              <div id="statCpuBar" class="h-full bg-blue-400" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Launchers -->
+        <div>
+          <h3 class="text-base font-bold text-slate-200 mb-4">Quick Cloud Tools</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div onclick="switchTab('storage')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white mb-1">100GB Drive</h4>
+                <p class="text-xs text-slate-400">Upload & stream files with share links.</p>
+              </div>
+            </div>
+
+            <div onclick="switchTab('databases')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-database"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white mb-1">Database Hub</h4>
+                <p class="text-xs text-slate-400">Query MySQL, Postgres & MSSQL.</p>
+              </div>
+            </div>
+
+            <div onclick="switchTab('redirects')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-diamond-turn-right"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white mb-1">URL Redirection</h4>
+                <p class="text-xs text-slate-400">Forward any slug or domain to custom URLs.</p>
+              </div>
+            </div>
+
+            <div onclick="switchTab('network')" class="glass-card p-6 cursor-pointer flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl shrink-0">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white mb-1">Free Tunnels</h4>
+                <p class="text-xs text-slate-400">Instant HTTPS access via Cloudflare & Pinggy.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 2: 100GB CLOUD STORAGE DRIVE -->
+      <!-- ========================================================================= -->
+      <section id="tab-storage" class="hidden space-y-6">
+        <div class="glass-card p-4 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-2 text-sm text-slate-300 overflow-x-auto" id="storageBreadcrumbs">
+            <button onclick="navigateToPath('')" class="text-cyan-400 font-bold hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-house"></i> Root (100GB)
+            </button>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="promptNewFolder()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+              <i class="fa-solid fa-folder-plus text-amber-400"></i> New Folder
+            </button>
+            <button onclick="openUploadModal()" class="gradient-btn px-4 py-2 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow">
+              <i class="fa-solid fa-upload"></i> Upload Files
+            </button>
+            <button onclick="refreshStorage()" class="p-2 text-slate-400 hover:text-white transition" title="Refresh">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="dropZone" class="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-2xl p-6 text-center transition cursor-pointer bg-slate-900/30">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-400 mb-2"></i>
+          <p class="text-sm font-semibold text-slate-200">Drag and drop files here to upload to your 100GB Cloud Storage</p>
+          <p class="text-xs text-slate-500 mt-1">Supports large videos, photos, music, code files, and documents</p>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4" id="fileGrid"></div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 3: DATABASE CLOUD HUB -->
+      <!-- ========================================================================= -->
+      <section id="tab-databases" class="hidden space-y-6">
+        <div class="glass-card p-6 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Database Servers & Connection Hub</h3>
+            <p class="text-xs text-slate-400 mt-1">Connected database engines ready for application usage, SQL queries, and backups.</p>
+          </div>
+          <button onclick="loadDatabases()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+            <i class="fa-solid fa-arrows-rotate text-emerald-400"></i> Refresh Health
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="databasesGrid"></div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 4: DOMAINS & REVERSE PROXY -->
+      <!-- ========================================================================= -->
+      <section id="tab-domains" class="hidden space-y-6">
+        <div class="glass-card p-6 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Domain Names & Dynamic Reverse Proxy</h3>
+            <p class="text-xs text-slate-400 mt-1">Route custom domains and subdomains dynamically to any internal port.</p>
+          </div>
+          <button onclick="openAddDomainModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Create Domain Route
+          </button>
+        </div>
+
+        <div class="glass-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-4">Domain Name</th>
+                <th class="p-4">Target Service</th>
+                <th class="p-4">Status</th>
+                <th class="p-4">Total Hits</th>
+                <th class="p-4">Description</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="domainsTableBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 5: UNIVERSAL URL REDIRECTION & SHORTLINK RULES -->
+      <!-- ========================================================================= -->
+      <section id="tab-redirects" class="hidden space-y-6">
+        <div class="glass-card p-6 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Universal URL Redirection & Forwarding</h3>
+            <p class="text-xs text-slate-400 mt-1">Create custom links (e.g. <code>http://localhost:9000/r/myproject</code>) that redirect or reverse-proxy to any destination URL.</p>
+          </div>
+          <button onclick="openAddRedirectModal()" class="gradient-btn px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Add Redirect Rule
+          </button>
+        </div>
+
+        <div class="glass-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-4">Shortlink / Slug</th>
+                <th class="p-4">Target Destination URL</th>
+                <th class="p-4">Redirect Type</th>
+                <th class="p-4">Hits</th>
+                <th class="p-4">Description</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="redirectsTableBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 6: FREE REMOTE TUNNELS & MULTI-PROVIDER DDNS -->
+      <!-- ========================================================================= -->
+      <section id="tab-network" class="hidden space-y-6">
+        <!-- Multi-Provider Remote Tunnels Card -->
+        <div class="glass-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-tower-broadcast"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white">Instant Free Remote HTTPS Tunnels</h3>
+                <p class="text-xs text-slate-400">Zero-port-forwarding public access via Cloudflare, Pinggy, or Localhost.run.</p>
+              </div>
+            </div>
+            <div id="tunnelActionBtnContainer">
+              <button onclick="toggleTunnel()" id="tunnelToggleBtn" class="gradient-btn px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-bolt"></i> Start Outside Tunnel
+              </button>
+            </div>
+          </div>
+
+          <!-- Provider Select & Port Selection -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Tunnel Provider</label>
+              <select id="tunnelProviderSelect" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-purple-500">
+                <option value="cloudflare" selected>Cloudflare Zero-Trust Tunnel (Quick / Token)</option>
+                <option value="pinggy">Pinggy (Free Instant HTTPS SSH Tunnel)</option>
+                <option value="localhostrun">Localhost.run (Free Instant Tunnel)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Target Local Port</label>
+              <select id="tunnelPortSelect" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-purple-500">
+                <option value="9000" selected>Port 9000 (AviCloud Dashboard & Storage)</option>
+                <option value="9080">Port 9080 (Dynamic Reverse Proxy)</option>
+                <option value="3000">Port 3000 (LocalDeploy App Panel)</option>
+                <option value="8080">Port 8080 (Jenkins)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Optional Cloudflare Token</label>
+              <input type="password" id="tunnelTokenInput" placeholder="Leave blank for free quick tunnel" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-purple-500">
+            </div>
+          </div>
+
+          <!-- Public URL Box -->
+          <div id="tunnelUrlBox" class="hidden p-4 rounded-xl bg-slate-900/80 border border-purple-500/30 flex items-center justify-between">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-purple-400">Live Public HTTPS URL</span>
+              <p class="text-sm font-mono font-bold text-white mt-0.5" id="livePublicUrl">https://...</p>
+            </div>
+            <button onclick="copyToClipboard(document.getElementById('livePublicUrl').innerText)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg text-xs font-semibold border border-slate-700 transition">
+              <i class="fa-solid fa-copy mr-1"></i> Copy
+            </button>
+          </div>
+        </div>
+
+        <!-- Multi-Provider Dynamic DNS Sync -->
+        <div class="glass-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white">Free Dynamic DNS & Webhook Sync</h3>
+                <p class="text-xs text-slate-400">Sync your public IP with Cloudflare DNS, FreeDNS, No-IP, Dynu, or Custom Webhooks.</p>
+              </div>
+            </div>
+            <div class="text-xs text-slate-400 font-mono">
+              Public IP: <strong class="text-cyan-400" id="detectedPublicIp">Detecting...</strong>
+            </div>
+          </div>
+
+          <form id="ddnsSyncForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Provider</label>
+              <select id="ddnsProvider" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                <option value="cloudflare_dns">Cloudflare DNS API</option>
+                <option value="freedns">FreeDNS (afraid.org)</option>
+                <option value="noip">No-IP DDNS</option>
+                <option value="dynu">Dynu DDNS</option>
+                <option value="custom_webhook">Custom Webhook URL</option>
+                <option value="duckdns">DuckDNS</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Domain Name</label>
+              <input type="text" id="ddnsDomain" required placeholder="e.g. mycloud.yourdomain.com" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Auth Token / Key</label>
+              <input type="password" id="ddnsToken" required placeholder="API Token or Secret Key" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition">
+                <i class="fa-solid fa-arrows-rotate mr-1.5"></i> Sync IP Now
+              </button>
+            </div>
+          </form>
+
+          <div id="ddnsResult" class="mt-3 text-xs hidden"></div>
+
+          <!-- Saved DDNS Rules Table -->
+          <div class="mt-6 border-t border-slate-800 pt-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Configured DDNS Providers</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-900/60 text-slate-500 uppercase font-semibold">
+                  <tr>
+                    <th class="p-3">Provider</th>
+                    <th class="p-3">Domain</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Last Synced IP</th>
+                    <th class="p-3">Last Updated</th>
+                    <th class="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ddnsTableBody" class="divide-y divide-slate-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 7: CLOUD APP STORE -->
+      <!-- ========================================================================= -->
+      <section id="tab-apps" class="hidden space-y-6">
+        <div>
+          <h3 class="text-base font-bold text-white mb-1">1-Click Cloud Application Catalog</h3>
+          <p class="text-xs text-slate-400">Deploy isolated productivity, security, and cloud tools in seconds.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="appCatalogGrid"></div>
+
+        <div class="mt-8">
+          <h3 class="text-base font-bold text-white mb-3">Running AviCloud Containers</h3>
+          <div class="glass-card overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                <tr>
+                  <th class="p-4">Container</th>
+                  <th class="p-4">Image</th>
+                  <th class="p-4">State</th>
+                  <th class="p-4">Port Bindings</th>
+                  <th class="p-4 text-right">Controls</th>
+                </tr>
+              </thead>
+              <tbody id="containersTableBody" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 8: ACTIVE SHARE LINKS -->
+      <!-- ========================================================================= -->
+      <section id="tab-shares" class="hidden space-y-6">
+        <div class="glass-card p-6">
+          <h3 class="text-base font-bold text-white">Active Public Share Links</h3>
+          <p class="text-xs text-slate-400 mt-1">Manage public download URLs, view downloads, and revoke links.</p>
+        </div>
+
+        <div class="glass-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-4">File / Folder</th>
+                <th class="p-4">Share URL</th>
+                <th class="p-4">Security</th>
+                <th class="p-4">Downloads</th>
+                <th class="p-4">Expires</th>
+                <th class="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sharesTableBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 9: SETTINGS & SECURITY -->
+      <!-- ========================================================================= -->
+      <section id="tab-settings" class="hidden space-y-6 max-w-2xl">
+        <div class="glass-card p-6">
+          <h3 class="text-base font-bold text-white mb-4">Security & Password</h3>
+          <form id="changePasswordForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
+              <input type="password" id="currentPassword" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">New Password (min. 6 characters)</label>
+              <input type="password" id="newPassword" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+            </div>
+            <button type="submit" class="gradient-btn px-6 py-2.5 rounded-xl text-xs font-bold text-white">
+              Update Password
+            </button>
+            <div id="passwordResult" class="text-xs hidden"></div>
+          </form>
+        </div>
+
+        <div class="glass-card p-6">
+          <h3 class="text-base font-bold text-white mb-2">Platform Isolation Information</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            AviCloud operates with 100% isolation in <code>/home/avinash/cloud-platform</code>. All 100GB cloud files, domains, proxies, and database tables are maintained independently without modifying any existing host configuration.
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS -->
+  <!-- ========================================================================= -->
+
+  <!-- Add URL Redirect Modal -->
+  <div id="addRedirectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
+    <div class="glass-card max-w-md w-full p-6 relative">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Add URL Redirection Rule</h3>
+        <button onclick="closeAddRedirectModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="addRedirectForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Shortlink Slug (e.g. <code>myproject</code>)</label>
+          <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+            <span class="px-3 text-xs text-slate-500 font-mono">/r/</span>
+            <input type="text" id="redirectSlug" required placeholder="myproject" class="w-full p-2.5 bg-transparent text-slate-200 text-xs focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Destination URL</label>
+          <input type="text" id="redirectTarget" required placeholder="https://github.com/myrepo or http://localhost:4000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Forwarding Type</label>
+          <select id="redirectType" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+            <option value="302" selected>302 Temporary Redirect (Standard Forward)</option>
+            <option value="301">301 Permanent Redirect</option>
+            <option value="proxy">Reverse Proxy (Transparent Masking)</option>
+            <option value="iframe">Embedded Frame</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Description (Optional)</label>
+          <input type="text" id="redirectDesc" placeholder="e.g. Project Repository link" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" onclick="closeAddRedirectModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Redirection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SQL Query Runner Modal -->
+  <div id="queryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden p-4">
+    <div class="glass-card max-w-3xl w-full p-6 relative max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-white" id="queryModalTitle">SQL Query Console</h3>
+          <p class="text-[11px] text-slate-400" id="queryModalSubtitle">Execute queries directly on connected database</p>
+        </div>
+        <button onclick="closeQueryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="mb-4">
+        <textarea id="sqlQueryInput" placeholder="SELECT * FROM ...;" class="w-full h-28 bg-slate-900 border border-slate-700 rounded-xl p-3 font-mono text-xs text-slate-100 focus:outline-none focus:border-emerald-500"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <button onclick="executeSqlQuery()" id="runSqlBtn" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow">
+            <i class="fa-solid fa-play"></i> Run Query
+          </button>
+          <button onclick="backupCurrentDatabase()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-semibold rounded-xl text-xs border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Backup to 100GB Storage
+          </button>
+        </div>
+        <span id="queryStatusText" class="text-xs text-slate-400"></span>
+      </div>
+
+      <!-- Query Output -->
+      <div class="flex-1 overflow-auto bg-slate-900/90 rounded-xl p-3 border border-slate-800 font-mono text-xs text-slate-300" id="queryResultsBox">
+        <div class="text-slate-500 italic">Results will appear here...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Upload Modal -->
+  <div id="uploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-lg w-full p-6 relative">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Upload Files to 100GB Cloud Drive</h3>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="file" id="fileInput" multiple class="w-full p-4 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-300 mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600">
+
+      <div id="uploadProgressBar" class="hidden mb-4">
+        <div class="flex justify-between text-xs text-slate-400 mb-1">
+          <span>Uploading...</span>
+          <span id="uploadProgressPercent">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div id="uploadProgressFill" class="h-full bg-cyan-400 transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button onclick="closeUploadModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+        <button onclick="executeUpload()" id="uploadSubmitBtn" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Start Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Share Link Modal -->
+  <div id="shareModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-md w-full p-6 relative">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Create Public Share Link</h3>
+        <button onclick="closeShareModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">File / Folder</label>
+          <input type="text" id="shareTargetName" readonly class="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700/50 rounded-xl text-slate-400 text-xs font-mono">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Optional Password Protection</label>
+          <input type="password" id="sharePasswordInput" placeholder="Leave empty for public access" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Link Expiration</label>
+          <select id="shareExpirySelect" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+            <option value="0">Never Expires</option>
+            <option value="1">1 Day</option>
+            <option value="7" selected>7 Days</option>
+            <option value="30">30 Days</option>
+          </select>
+        </div>
+
+        <div id="generatedShareUrlBox" class="hidden p-3 rounded-xl bg-slate-900 border border-cyan-500/40">
+          <span class="text-[10px] uppercase font-bold text-cyan-400">Share Link Created:</span>
+          <div class="flex items-center justify-between mt-1">
+            <input type="text" id="generatedShareUrl" readonly class="bg-transparent text-xs font-mono text-white w-full focus:outline-none">
+            <button onclick="copyToClipboard(document.getElementById('generatedShareUrl').value)" class="text-cyan-400 hover:text-cyan-300 ml-2">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button onclick="closeShareModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Close</button>
+        <button onclick="submitShareCreation()" id="createShareBtn" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Generate Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Domain Modal -->
+  <div id="addDomainModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-md w-full p-6 relative">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Create Domain Name Route</h3>
+        <button onclick="closeAddDomainModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="addDomainForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Domain Name</label>
+          <input type="text" id="newDomainName" required placeholder="e.g. drive.avivault.duckdns.org" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Internal URL</label>
+          <input type="text" id="newTargetUrl" required placeholder="http://127.0.0.1:9000" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Description</label>
+          <input type="text" id="newDomainDesc" placeholder="e.g. Cloud Storage Portal" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" onclick="closeAddDomainModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+          <button type="submit" class="gradient-btn px-5 py-2 text-white rounded-xl text-xs font-bold shadow">Save Domain</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Media Preview / Text Editor Modal -->
+  <div id="previewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md hidden p-4">
+    <div class="glass-card max-w-4xl w-full p-6 relative max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-sm font-bold text-white truncate" id="previewTitle">File Preview</h3>
+        <div class="flex items-center gap-3">
+          <button id="saveTextBtn" onclick="saveEditedTextFile()" class="hidden px-3.5 py-1.5 gradient-btn text-white rounded-lg text-xs font-bold">
+            <i class="fa-solid fa-floppy-disk mr-1"></i> Save
+          </button>
+          <button onclick="closePreviewModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto mt-4 flex items-center justify-center" id="previewBody"></div>
+    </div>
+  </div>
+
+  <!-- App.js -->
+  <script src="/app.js"></script>
+</body>
+</html>
