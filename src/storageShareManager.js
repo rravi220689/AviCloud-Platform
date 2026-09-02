@@ -149,6 +149,20 @@ function getStorageShareStatus() {
         macos: `sudo mkdir -p /Volumes/AviCloud && sudo mount_nfs -o port=2049,mountport=2049,vers=3,nolock avivault.duckdns.org:/storage /Volumes/AviCloud`,
         windows: `mount -o anon,nolock \\\\avivault.duckdns.org\\storage Z:`
       }
+    },
+    ftp: {
+      isRunning: true,
+      port: 21,
+      sftpPort: 22,
+      host: localIp,
+      duckDnsHost: 'avivault.duckdns.org',
+      username: 'avinash',
+      storageFolder: '100GB_Cloud_Storage',
+      directUrls: {
+        fileExplorer: `ftp://${localIp}/100GB_Cloud_Storage`,
+        duckDns: 'ftp://avivault.duckdns.org/100GB_Cloud_Storage',
+        sftp: `sftp://avinash@${localIp}:22`
+      }
     }
   };
 }

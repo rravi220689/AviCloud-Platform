@@ -467,10 +467,50 @@
               </div>
               <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-slate-200 border border-slate-800" id="webdavCmdWinLocal">net use Z: http://165.101.251.196:9000/webdav /user:avinash Avinash@Cloud1989</pre>
             </div>
+        <!-- 3. FTP & SFTP Server Storage Access (Port 21 & 22) -->
+        <div class="glass-card p-6 space-y-4 border border-indigo-500/20">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-folder-tree text-indigo-400"></i> FTP & SFTP File Server (Ports 21 & 22) - Outside & Local Access
+            </h4>
+            <span class="text-xs text-emerald-400 font-bold">FTP / SFTP Active</span>
+          </div>
+
+          <div class="space-y-3">
+            <!-- FTP Windows File Explorer Direct Link -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-indigo-500/30">
+              <div class="flex items-center justify-between text-xs text-indigo-400 font-semibold mb-1">
+                <span><i class="fa-brands fa-windows mr-1.5"></i> Windows File Explorer Direct FTP Path:</span>
+                <button onclick="copyToClipboard('ftp://avinash@165.101.251.196/100GB_Cloud_Storage')" class="text-indigo-400 hover:text-indigo-300"><i class="fa-solid fa-copy mr-1"></i> Copy Path</button>
+              </div>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-indigo-300 border border-slate-800">ftp://avinash@165.101.251.196/100GB_Cloud_Storage</pre>
+              <div class="mt-2 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
+                <span>Credentials: Username <code>avinash</code> | Password <code>1989</code></span>
+                <span class="text-slate-500">Paste directly into Windows Explorer address bar or Add Network Location</span>
+              </div>
+            </div>
+
+            <!-- DuckDNS FTP Path -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30">
+              <div class="flex items-center justify-between text-xs text-amber-400 font-semibold mb-1">
+                <span><i class="fa-solid fa-feather mr-1.5"></i> DuckDNS Domain FTP URL:</span>
+                <button onclick="copyToClipboard('ftp://avinash@avivault.duckdns.org/100GB_Cloud_Storage')" class="text-amber-400 hover:text-amber-300"><i class="fa-solid fa-copy mr-1"></i> Copy URL</button>
+              </div>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-amber-300 border border-slate-800">ftp://avinash@avivault.duckdns.org/100GB_Cloud_Storage</pre>
+            </div>
+
+            <!-- SFTP Connection Info -->
+            <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i> Secure SFTP (FileZilla / WinSCP / Cyberduck):</span>
+                <button onclick="copyToClipboard('sftp://avinash@165.101.251.196:22')" class="text-cyan-400 hover:text-cyan-300"><i class="fa-solid fa-copy mr-1"></i> Copy SFTP</button>
+              </div>
+              <pre class="bg-slate-900/90 p-2.5 rounded-lg text-xs font-mono text-emerald-300 border border-slate-800">Host: 165.101.251.196 | Port: 22 | User: avinash | Path: /home/avinash/100GB_Cloud_Storage</pre>
+            </div>
           </div>
         </div>
 
-        <!-- 3. NFS Mount Commands (Port 2049) -->
+        <!-- 4. NFS Mount Commands (Port 2049) -->
         <div class="glass-card p-6 space-y-4 border border-teal-500/20">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-bold text-white flex items-center gap-2">
